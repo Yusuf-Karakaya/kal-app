@@ -86,7 +86,10 @@ kalori, protein, karbonhidrat ve yağı hesaplar.
   yoksa boy-kilodan kaba tahmin), yağsız kütle, beden kitle indeksi, FFMI ve bel/boy oranı hesaplanır.
 - **Program analizi:** mevcut kettlebell programı baldırı neredeyse hiç, bisepsi az çalıştırıyor; uygulama
   bunlar için ek hareket önerir.
-- Prototip temsilidir; gerçek vücut şeklini değil, ölçülerden ve antrenmanlardan çıkan eğilimi gösterir.
+- **Kilo değişimi çizime yansır:** bel ölçüsü yoksa yağ oranı boy-kilodan; varsa ölçüden hesaplanır ve son
+  ölçüden sonraki kilo değişimi (yağsız kütle korunarak) yağ olarak sayılır. Yeni bel ölçüsü girilince kesinleşir.
+- Erkek ve kadın için ayrı anatomik çizimler (önden/arkadan, kas kas ayrılmış). Prototip temsilidir; gerçek vücut
+  şeklini değil, ölçülerden ve antrenmanlardan çıkan eğilimi gösterir.
 
 ### Gizlilik ve parola kilidi
 - **Kod herkese açık, verilerin değil.** Yediklerin, kilon, antrenmanların ve profilin yalnızca kendi
@@ -182,6 +185,13 @@ hatırlatmalar sayfanın üstünde kart olarak çıkar.
 
 `python3 tools/build_single.py dist/kal.html` komutu, uygulamayı service worker gerektirmeyen tek
 bir HTML dosyasına dönüştürür (claude.ai Artifact sayfası olarak yayınlamak için kullanıldı).
+
+## Lisanslar ve kaynaklar
+
+- Vücut prototipindeki anatomik çizimler (`mobile/src/core/anatomy.ts`) [react-native-body-highlighter](https://github.com/HichamELBSI/react-native-body-highlighter)
+  paketinden alınmıştır — MIT Lisansı, © 2022 ELABBASSI Hicham. Yollar `tools/extract_anatomy.py` ile veri olarak aktarılır.
+- Yağ oranı: ABD Donanması çevre yöntemi (Hodgdon & Beckett, 1984); ölçü yoksa Deurenberg (1991) BMI tahmini.
+- Günlük harcama: Mifflin-St Jeor. Yakılan kalori: Compendium of Physical Activities MET değerleri.
 
 ## Yedeği taşımak
 

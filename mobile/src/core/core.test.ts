@@ -315,7 +315,7 @@ test('antrenman: set işaretleme, ilerleme ve su bonusu', () => {
 
 /* ---------- vücut ---------- */
 import {
-  MUSCLE_ORDER, bodySvg, composition, dayVolume, development, muscleAdvice, navyBodyFat, plannedVolume, setMeasure, weekVolume,
+  MUSCLE_ORDER, bodySvg, composition, dayVolume, development, figureScale, muscleAdvice, navyBodyFat, plannedVolume, setMeasure, weekVolume,
 } from './index';
 
 test('kas hacmi: yapılan setler kaslara dağıtılır', () => {
@@ -400,4 +400,23 @@ test('program değişince eski kayıtlar karışmaz', () => {
   assert.equal(v.chest, 1);
   assert.equal(dayProgress(d, mon).done, 1);
   assert.ok(muscleAdvice(d).some((a) => a.text.includes('bölgesel')));
+});
+
+test('ölçüden sonraki kilo değişimi yağ oranına ve çizime yansır', () => {
+  let d = structuredClone(DEFAULT_DATA);
+  d.profile = { ...d.profile, sex: 'm', height: 178, age: 30 };
+  d = setWeight(d, '2026-10-01', 86);
+  d = setMeasure(d, '2026-10-01', { waist: 92, neck: 39 });
+  const c0 = composition(d);
+  assert.equal(c0.source, 'navy');
+  d = setWeight(d, '2026-11-01', 82); // 4 kg verdi, yeni ölçü yok
+  const c1 = composition(d);
+  assert.equal(c1.source, 'navy-weight');
+  assert.ok(Math.abs(c1.leanKg - c0.leanKg) < 0.01, 'yağsız kütle korunur');
+  assert.ok(c1.bodyFat < c0.bodyFat - 3, `${c0.bodyFat} → ${c1.bodyFat}`);
+  // yeni bel ölçüsü girilince yine ölçüye döner
+  d = setMeasure(d, '2026-11-01', { waist: 88 });
+  assert.equal(composition(d).source, 'navy');
+  // çizim genişliği yağ oranıyla değişir
+  assert.ok(figureScale(c1.bodyFat).body < figureScale(c0.bodyFat).body);
 });

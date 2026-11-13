@@ -61,7 +61,7 @@ export default function BodyScreen({ data, commit }: { data: Data; commit: (d: D
         <View style={s.figures}>
           {(['front', 'back'] as const).map((v) => (
             <View key={v} style={{ flex: 1, alignItems: 'center' }}>
-              <SvgXml xml={svg(v)} width="100%" height={undefined} style={{ aspectRatio: 0.5 }} />
+              <SvgXml xml={svg(v)} width="100%" height={undefined} style={{ aspectRatio: 0.52 }} />
               <Text style={{ color: c.muted, fontSize: 11, letterSpacing: 0.8 }}>{v === 'front' ? 'ÖNDEN' : 'ARKADAN'}</Text>
             </View>
           ))}
@@ -79,7 +79,7 @@ export default function BodyScreen({ data, commit }: { data: Data; commit: (d: D
             ? target
               ? `Hedef: ${fmt1(target)} kg, yağsız kütle korunursa yaklaşık %${fmt1(bf)} yağ. Program her hafta eksiksiz yapılırsa kaslar bu renklere ulaşır.`
               : "Ayarlar'dan hedef kilonu girersen o kilodaki görünümünü gösteririm."
-            : 'Şekil son 4 haftadaki antrenmanlarına ve yağ oranına, renkler bu haftaki etkili setlere göre. Aşağıdan bir kas seç.'}
+            : `Şekil son 4 haftadaki antrenmanlarına ve yağ oranına, renkler bu haftaki etkili setlere göre. Aşağıdan bir kas seç.${comp.measuredOn ? ` Son bel ölçünden (${fmt1(comp.measuredOn.kg)} kg, %${fmt1(comp.measuredOn.bodyFat)}) bu yana kilo değişimi yağ olarak sayıldı; yeni bel ölçüsü girersen kesinleşir.` : ''}`}
         </Text>
         {selected && (
           <View style={[s.detail, { backgroundColor: c.sunk }]}>
@@ -125,7 +125,7 @@ export default function BodyScreen({ data, commit }: { data: Data; commit: (d: D
 
       <Card title="Vücut ölçülerin">
         <View style={s.comp}>
-          <Stat value={`%${fmt1(comp.bodyFat)}`} label={`yağ oranı${comp.source === 'bmi' ? ' (tahmini)' : ''}`} tag={comp.fatLabel} />
+          <Stat value={`%${fmt1(comp.bodyFat)}`} label={`yağ oranı${comp.source === 'bmi' ? ' (tahmini)' : comp.source === 'navy-weight' ? ' (ölçü + kilo)' : ''}`} tag={comp.fatLabel} />
           <Stat value={`${fmt1(comp.leanKg)} kg`} label="yağsız kütle" tag={`yağ ${fmt1(comp.fatKg)} kg`} />
           <Stat value={fmt1(comp.bmi)} label="beden kitle indeksi" tag={comp.bmiLabel} />
           <Stat value={fmt1(comp.ffmi)} label="FFMI (kas indeksi)" tag={comp.ffmi < (male ? 18 : 14) ? 'düşük' : comp.ffmi < (male ? 22 : 17) ? 'ortalama' : 'kaslı'} />

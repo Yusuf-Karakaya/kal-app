@@ -790,6 +790,9 @@ function renderBody() {
     hint = 'Şekil son 4 haftadaki antrenmanlarına ve yağ oranına, renkler bu haftaki etkili setlere göre. Bir kasa dokun.';
   }
   $('#bodyBf').textContent = `%${fmt1(bf)} yağ${comp.source === 'bmi' && !goal ? ' (tahmini)' : ''}`;
+  if (!goal && comp.measuredOn) {
+    hint += ` Son bel ölçünden (${K.keyToDate(comp.measuredOn.key).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}, ${fmt1(comp.measuredOn.kg)} kg, %${fmt1(comp.measuredOn.bodyFat)}) bu yana kilo değişimi yağ olarak sayıldı; yeni bel ölçüsü girersen kesinleşir.`;
+  }
   $$('#bodyModeSeg button').forEach((b) => {
     b.classList.toggle('on', b.dataset.mode === bodyMode);
     b.setAttribute('aria-pressed', String(b.dataset.mode === bodyMode));
@@ -819,7 +822,7 @@ function renderBody() {
   const male = data.profile.sex === 'm';
   const ffmiLabel = comp.ffmi < (male ? 18 : 14) ? 'düşük' : comp.ffmi < (male ? 22 : 17) ? 'ortalama' : 'kaslı';
   $('#compStats').innerHTML = `
-    <div><strong>%${fmt1(comp.bodyFat)}</strong><span>yağ oranı${comp.source === 'bmi' ? ' (tahmini)' : ''}</span><em>${comp.fatLabel}</em></div>
+    <div><strong>%${fmt1(comp.bodyFat)}</strong><span>yağ oranı${comp.source === 'bmi' ? ' (tahmini)' : comp.source === 'navy-weight' ? ' (ölçü + kilo)' : ''}</span><em>${comp.fatLabel}</em></div>
     <div><strong>${kgTxt(comp.leanKg)}</strong><span>yağsız kütle</span><em>yağ ${kgTxt(comp.fatKg)}</em></div>
     <div><strong>${fmt1(comp.bmi)}</strong><span>beden kitle indeksi</span><em>${comp.bmiLabel}</em></div>
     <div><strong>${fmt1(comp.ffmi)}</strong><span>FFMI (kas indeksi)</span><em>${ffmiLabel}</em></div>
