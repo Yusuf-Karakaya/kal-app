@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "Kal",
+    "slug": "kal",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#2f7d4f"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yusufkarakaya.kal"
+    },
+    "android": {
+      "package": "com.yusufkarakaya.kal",
+      "adaptiveIcon": {
+        "backgroundColor": "#2f7d4f",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "color": "#2f7d4f"
+        }
+      ]
+    ]
+  }
+}
