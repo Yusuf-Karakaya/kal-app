@@ -94,6 +94,75 @@ export const PROGRAM: WorkoutDay[] = [
     intro: 'Kas burada büyür. Uyku, protein ve su öncelikli. İstersen hafif yürüyüş.' },
 ];
 
+
+/**
+ * Üst vücut odaklı program: bacaklar haftada ~4–6 setlik "koruma" düzeyinde tutulur (büyümez),
+ * göğüs, sırt, omuz ve kollar 10–20 set aralığına çıkarılır. Swing kısa tutulur: amaç yağ yakımı.
+ */
+export const PROGRAM_UPPER: WorkoutDay[] = [
+  { k: 'PZT', name: 'Göğüs & Omuz (İtiş)', focus: 'Göğüs · Omuz · Triseps',
+    intro: 'İtiş günü. Duraklamalı tekrarlar tek kettlebell ile göğüs ve omuza yeterli yükü verir.',
+    blocks: [
+      { t: 'Süperset A', ex: [
+        { n: 'Tek Kol Floor Press', s: 4, r: '12 / kol', rest: 60, kg: 1, tip: 'Dirsek yere değince 1 sn tam dur, sonra it. Diğer el gövdeyi dengeler.' },
+        { n: 'Ayak Yüksek Push-up', s: 4, r: 'Max −2', rest: 60, kg: 0, tip: 'Ayaklar sandalyede. Kolay geliyorsa dipte 2 sn bekle.' }] },
+      { t: 'Süperset B', ex: [
+        { n: 'Tek Kol Overhead Press', s: 4, r: '8 / kol', rest: 60, kg: 1, tip: "Rack'ten başla, karın ve kalça kilitli. Belini büzme." },
+        { n: 'Kettlebell Pullover', s: 3, r: '12', rest: 45, kg: 1, tip: 'Sırt üstü, boynuzlardan tut, dirsekler hafif bükük. Göğsü ve kanatları esnetir.' }] },
+      { t: 'Bitiriş', ex: [
+        { n: 'Overhead Triceps Extension', s: 3, r: '12', rest: 45, kg: 1, tip: 'İki elle boynuzlardan tut, kettlebell başın arkasına insin; dirsekler öne baksın, açılmasın.' }] }] },
+  { k: 'SAL', name: 'Sırt & Biseps (Çekiş)', focus: 'Sırt · Biseps · Arka omuz',
+    intro: 'Çekiş günü. Geniş bir sırt bel çizgisini daha ince gösterir.',
+    blocks: [
+      { t: 'Ana hareketler', ex: [
+        { n: 'Tek Kol Row', s: 5, r: '15 / kol', rest: 60, kg: 1, tip: 'Tepede 2 sn bekle, 3 sn indir. Dirsek kalçaya doğru.' },
+        { n: 'Kettlebell High Pull', s: 4, r: '10 / kol', rest: 60, kg: 1, tip: 'Kalçadan hafif itme al, dirseği yukarı ve geriye çek; kettlebell göğüs hizasında dursun.' }] },
+      { t: 'Kol', ex: [
+        { n: 'Kettlebell Curl', s: 4, r: '10 / kol', rest: 45, kg: 1, tip: 'Sapın tutamağından tut, dirsek gövdeye yapışık, 3 sn indir. Gövdeyi sallama.' },
+        { n: 'Hammer Curl', s: 3, r: '12 / kol', rest: 45, kg: 1, tip: 'Çekiç tutuş, dirsek gövdeye yakın, 3 sn indir.' }] },
+      { t: 'Core', ex: [
+        { n: 'Plank Pull-through', s: 3, r: '8 / taraf', rest: 45, kg: 1, tip: "Yüksek plank'ta kettlebell'i karşı elle altından çek. Kalça dönmesin." },
+        { n: 'Suitcase Carry', s: 3, r: '40 m / kol', rest: 45, kg: 1, tip: 'Tek elde, gövde dik, yan karın sıkı.' }] }] },
+  PROGRAM[2], // Aktif dinlenme
+  { k: 'PER', name: 'Üst Vücut Güç', focus: 'Clean · Press · Push-up',
+    intro: 'Haftanın en yoğun günü; yük omuz, sırt ve göğüste. Swing kısa ve yağ yakımı için.',
+    blocks: [
+      { t: 'Ana hareketler', ex: [
+        { n: 'Tek Kol Clean & Press', s: 5, r: '6 / kol', rest: 75, kg: 1, tip: "Kettlebell önkolun etrafından yumuşak dönsün. Rack'te nefes al, it." },
+        { n: 'Clean → Press → Push-up', s: 4, r: '5 / kol', rest: 75, kg: 1, tip: '1 clean, 1 press, kettlebell’i bırak, 1 push-up: bu bir tekrar. Diğer kola geç.' }] },
+      { t: 'Kondisyon', ex: [
+        { n: 'Swing EMOM', s: 8, r: '12 / dk', rest: 0, kg: 1, tip: '8 dk boyunca her dakika başında 12 iki el swing. Amaç nabzı yükseltmek; bacağı yormaya çalışma.' },
+        { n: 'Turkish Get-up', s: 3, r: '2 / kol', rest: 60, kg: 1, tip: 'Gözün hep kettlebell’de. Her aşamada dur, yavaş in.' }] }] },
+  { k: 'CUM', name: 'Kollar & Core', focus: 'Biseps · Triseps · Ön kol',
+    intro: 'Kol günü. Süperset yaparak kısa sürede yüksek hacim.',
+    blocks: [
+      { t: 'Süperset', ex: [
+        { n: 'Kettlebell Curl', s: 3, r: '10 / kol', rest: 30, kg: 1, tip: 'Dirsek sabit, tepede sık, 3 sn indir.' },
+        { n: 'Close-grip Push-up', s: 3, r: 'Max −2', rest: 45, kg: 0, tip: 'Eller omuz genişliğinden dar, dirsekler gövdeye yakın iner. Triseps çalışır.' },
+        { n: 'Overhead Triceps Extension', s: 2, r: '12', rest: 45, kg: 1, tip: 'Dirsekler öne baksın, kettlebell başın arkasına kontrollü insin.' }] },
+      { t: 'Ön kol & core', ex: [
+        { n: 'Hammer Curl', s: 3, r: '12 / kol', rest: 30, kg: 1, tip: 'Çekiç tutuş, dirsek gövdeye yakın, 3 sn indir.' },
+        { n: 'Wrist Curl', s: 2, r: '15', rest: 30, kg: 1, tip: 'Ön kol dize dayalı. Ağır gelirse gövdeden tut.' },
+        { n: 'Waiter Walk', s: 2, r: '30 sn / kol', rest: 45, kg: 1, tip: 'Kol yukarı kilitli, omuz paketli, yavaş yürü.' },
+        { n: 'Dead Bug (KB tutarak)', s: 3, r: '10 / taraf', rest: 45, kg: 1, tip: 'Kettlebell göğüs üstünde düz kollarla. Bel yere yapışık.' }] }] },
+  { k: 'CMT', name: 'Kondisyon & Bacak Koruma', focus: 'Kondisyon · Omuz · Koruma',
+    intro: 'Yağ yakımı için kondisyon. Bacak sadece koruma düzeyinde: büyütmek değil, diz ve kalça sağlığını korumak için.',
+    blocks: [
+      { t: 'Kondisyon', ex: [
+        { n: 'Kettlebell Snatch', s: 4, r: '8 / kol', rest: 60, kg: 1, tip: 'Kettlebell vücuda yakın yükselir, üstte yumuşakça kola yerleşir.' },
+        { n: 'Burpee', s: 3, r: '10', rest: 60, kg: 0, tip: 'Tempoyu koru.' },
+        { n: 'Hollow Hold', s: 3, r: '30 sn', rest: 30, kg: 0, tip: 'Bel yerde, kollar ve bacaklar uzak.' }] },
+      { t: 'Bacak koruma', ex: [
+        { n: 'Goblet Squat (hafif)', s: 2, r: '12', rest: 60, kg: 1, tip: 'Sadece koruma: tempo yok, duraklama yok, tükenişe gitme. Bacak büyütmek için değil, eklem sağlığı için.' }] }] },
+  PROGRAM[6], // Tam dinlenme
+];
+
+export type Focus = 'balanced' | 'upper';
+export const PROGRAMS: Record<Focus, WorkoutDay[]> = { balanced: PROGRAM, upper: PROGRAM_UPPER };
+export const FOCUS_LABEL: Record<Focus, string> = { balanced: 'Dengeli', upper: 'Üst vücut odaklı' };
+export const focusOf = (data?: Pick<Data, 'programFocus'>): Focus => data?.programFocus ?? 'balanced';
+export const programOf = (data?: Pick<Data, 'programFocus'>) => PROGRAMS[focusOf(data)];
+
 const VIDEO: Record<string, string> = {
   'Tempolu Goblet Squat': 'kettlebell goblet squat tempo', 'Tek Bacak RDL': 'kettlebell single leg RDL',
   'Bulgarian Split Squat': 'kettlebell goblet bulgarian split squat', 'Tek Kol Swing': 'one arm kettlebell swing',
@@ -109,6 +178,9 @@ const VIDEO: Record<string, string> = {
   'Hammer Curl': 'kettlebell hammer curl', 'Waiter Walk': 'kettlebell waiter walk',
   'Swing → Clean → Press → Squat': 'kettlebell complex swing clean press squat', 'Kettlebell Snatch': 'kettlebell snatch',
   'Burpee': 'burpee proper form', 'Hollow Hold': 'hollow body hold',
+  'Overhead Triceps Extension': 'kettlebell overhead triceps extension', 'Kettlebell High Pull': 'kettlebell high pull',
+  'Kettlebell Curl': 'kettlebell bicep curl', 'Close-grip Push-up': 'close grip push up',
+  'Clean → Press → Push-up': 'kettlebell clean press push up complex', 'Goblet Squat (hafif)': 'kettlebell goblet squat form',
 };
 
 /** Hareketin YouTube Shorts aramasının adresi */
@@ -126,22 +198,31 @@ export const PROGRESSION_NOTES = [
 
 /** Tarihin programdaki günü (Pazartesi = 0) */
 export const programIndex = (key: string) => (keyToDate(key).getDay() + 6) % 7;
-export const programFor = (key: string) => PROGRAM[programIndex(key)];
-export const exKey = (bi: number, ei: number) => `${bi}-${ei}`;
+/** Tarihe denk gelen program günü (veri verilirse seçili program odağına göre) */
+export const programFor = (key: string, data?: Pick<Data, 'programFocus'>) => programOf(data)[programIndex(key)];
+/** Set anahtarı. Üst vücut programının setleri "u" önekiyle saklanır; böylece program değişince eski kayıtlar karışmaz. */
+export const exKey = (bi: number, ei: number, data?: Pick<Data, 'programFocus'>) => `${focusOf(data) === 'upper' ? 'u' : ''}${bi}-${ei}`;
+
+/** Saklanan bir set anahtarının hangi harekete ait olduğunu bulur */
+export function resolveExercise(key: string, ek: string): Exercise | undefined {
+  const upper = ek.startsWith('u');
+  const [bi, ei] = (upper ? ek.slice(1) : ek).split('-').map(Number);
+  return PROGRAMS[upper ? 'upper' : 'balanced'][programIndex(key)].blocks?.[bi]?.ex[ei];
+}
 
 /** Ağır antrenman günü mü (dinlenme ve aktif dinlenme hariç) */
-export const isTrainingDay = (key: string) => {
-  const p = programFor(key);
+export const isTrainingDay = (key: string, data?: Pick<Data, 'programFocus'>) => {
+  const p = programFor(key, data);
   return !p.rest && !p.light;
 };
 
 export function dayProgress(data: Data, key: string) {
-  const p = programFor(key);
+  const p = programFor(key, data);
   const sets = data.workouts?.[key] ?? {};
   let total = 0, done = 0;
   (p.blocks ?? []).forEach((b, bi) => b.ex.forEach((x, ei) => {
     total += x.s;
-    done += (sets[exKey(bi, ei)] ?? []).filter(Boolean).length;
+    done += (sets[exKey(bi, ei, data)] ?? []).filter(Boolean).length;
   }));
   return { total, done, ratio: total ? done / total : 0 };
 }
@@ -155,9 +236,9 @@ export function weekProgress(data: Data, key: string) {
     const d = dayProgress(data, k);
     total += d.total;
     done += d.done;
-    if (isTrainingDay(k) && d.ratio >= 0.5) sessions++;
+    if (isTrainingDay(k, data) && d.ratio >= 0.5) sessions++;
   }
-  return { total, done, ratio: total ? done / total : 0, sessions, planned: PROGRAM.filter((p) => !p.rest && !p.light).length, monday };
+  return { total, done, ratio: total ? done / total : 0, sessions, planned: programOf(data).filter((p) => !p.rest && !p.light).length, monday };
 }
 
 export function toggleSet(data: Data, key: string, ek: string, si: number): Data {
@@ -179,21 +260,21 @@ export function resetWorkoutDay(data: Data, key: string): Data {
  * set başına ~45 sn iş + programdaki dinlenme (~2,5 MET). Bilgi amaçlıdır; günlük hedef zaten aktivite katsayısını içerir.
  */
 export function burnedKcal(data: Data, key: string): number {
-  const p = programFor(key);
   const sets = data.workouts?.[key] ?? {};
   const kg = data.profile.weight;
   const perMin = (met: number) => (met * 3.5 * kg) / 200;
   let kcal = 0;
-  (p.blocks ?? []).forEach((b, bi) => b.ex.forEach((x, ei) => {
-    const n = (sets[exKey(bi, ei)] ?? []).filter(Boolean).length;
-    if (!n) return;
+  for (const [ek, arr] of Object.entries(sets)) {
+    const x = resolveExercise(key, ek);
+    const n = arr.filter(Boolean).length;
+    if (!x || !n) continue;
     if (x.r.includes('dk') && x.s === 1) {
       kcal += perMin(3.5) * (parseInt(x.r, 10) || 30); // yürüyüş
-      return;
+      continue;
     }
     const work = x.r.includes('/ dk') ? 1 : 0.75;
     kcal += n * (perMin(x.kg ? 9.8 : 8) * work + perMin(2.5) * (x.rest / 60));
-  }));
+  }
   return Math.round(kcal);
 }
 
@@ -201,5 +282,5 @@ export function burnedKcal(data: Data, key: string): number {
 export const WORKOUT_WATER_BONUS = 500;
 export function waterGoalOn(data: Data, key: string): number {
   const started = dayProgress(data, key).done > 0;
-  return data.goals.water + (started && !programFor(key).rest ? WORKOUT_WATER_BONUS : 0);
+  return data.goals.water + (started && !programFor(key, data).rest ? WORKOUT_WATER_BONUS : 0);
 }

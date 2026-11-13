@@ -2,10 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Linking, Pressable, StyleSheet, Text, Vibration, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import {
-  Data, PROGRAM, PROGRESSION_NOTES, addDays, burnedKcal, dayProgress, exKey, fmt, keyToDate, programFor,
+  Data, FOCUS_LABEL, Focus, PROGRESSION_NOTES, addDays, burnedKcal, dayProgress, exKey, fmt, keyToDate, programFor, programOf,
   resetWorkoutDay, todayKey, toggleSet, videoUrl, weekProgress,
 } from '../data';
-import { Card, styles as ui, useTheme } from '../ui';
+import { Card, Segmented, styles as ui, useTheme } from '../ui';
 
 export interface RestTimer { end: number; total: number; label: string }
 interface Props { data: Data; commit: (d: Data, msg?: string) => void; startTimer: (t: RestTimer) => void }
@@ -18,7 +18,18 @@ export default function WorkoutScreen({ data, commit, startTimer }: Props) {
 
   const kb = data.kbWeight ?? 12;
   const week = weekProgress(data, key);
-  const p = programFor(key);
+  const p = programFor(key, data);
+  const focus: Focus = data.programFocus ?? 'balanced';
+  const changeFocus = (f: Focus) => {
+    if (f === focus) return;
+    Alert.alert(
+      f === 'upper' ? 'Üst vücut odaklı programa geçilsin mi?' : 'Dengeli programa dönülsün mü?',
+      f === 'upper'
+        ? 'Göğüs, sırt, omuz ve kollar haftada 12–22 sete çıkar; bacaklar 4–8 setle yalnızca korunur, büyümez. Önceki kayıtların silinmez.'
+        : 'Bacak ve kalça çalışması yeniden artar. Önceki kayıtların silinmez.',
+      [{ text: 'Vazgeç', style: 'cancel' }, { text: 'Geç', onPress: () => commit({ ...data, programFocus: f }, `${FOCUS_LABEL[f]} programa geçildi`) }],
+    );
+  };
   const prog = dayProgress(data, key);
   const burn = burnedKcal(data, key);
   const sets = data.workouts?.[key] ?? {};
@@ -35,7 +46,7 @@ export default function WorkoutScreen({ data, commit, startTimer }: Props) {
         <View style={{ flex: 1 }}>
           <Text style={[s.title, { color: c.text }]}>Kettlebell Haftası</Text>
           <Text style={{ color: c.muted, fontSize: 13 }}>
-            Tek {kb} kg kettlebell · bu hafta {week.sessions}/{week.planned} antrenman
+            Tek {kb} kg kettlebell · {FOCUS_LABEL[focus].toLocaleLowerCase('tr-TR')} · bu hafta {week.sessions}/{week.planned} antrenman
           </Text>
         </View>
         <View style={s.weekNav}>
@@ -57,8 +68,10 @@ export default function WorkoutScreen({ data, commit, startTimer }: Props) {
         </View>
       </View>
 
+      <Segmented options={[{ value: 'balanced' as Focus, label: 'Dengeli' }, { value: 'upper' as Focus, label: 'Üst vücut odaklı' }]} value={focus} onChange={changeFocus} />
+
       <View style={s.rail}>
-        {PROGRAM.map((d, i) => {
+        {programOf(data).map((d, i) => {
           const k = addDays(week.monday, i);
           const dp = dayProgress(data, k);
           const on = k === key;
@@ -105,7 +118,7 @@ export default function WorkoutScreen({ data, commit, startTimer }: Props) {
           <View key={b.t} style={{ gap: 10 }}>
             <Text style={[s.blockT, { color: c.muted }]}>{b.t.toLocaleUpperCase('tr-TR')}</Text>
             {b.ex.map((x, ei) => {
-              const ek = exKey(bi, ei);
+              const ek = exKey(bi, ei, data);
               const arr = sets[ek] ?? [];
               const all = arr.filter(Boolean).length === x.s;
               const vid = videoUrl(x.n);

@@ -66,6 +66,12 @@ kalori, protein, karbonhidrat ve yağı hesaplar.
 - Form ipuçları ve her hareket için YouTube Shorts video araması.
 - Haftalık ilerleme, geçmiş haftalara gezinme, yakılan kalori tahmini (MET tabanlı).
 - **Kal ile bağlantılı:** antrenman yapılan gün su hedefi 500 ml artar; antrenman ve protein önerileri gelir.
+- **İki program, tek dokunuşla geçiş:**
+  - *Dengeli:* orijinal program; alt vücut ağırlıklı (ön/arka bacak ve kalça haftada 20+ set).
+  - *Üst vücut odaklı:* göğüs, sırt, omuz ve kollar haftada 12–22 sete çıkar; bacaklar 4–8 setle yalnızca
+    korunur (büyümez). Bacak kalınlaşsın istemeyen ama üst vücudu geliştirmek isteyenler için.
+    Bacaklar toplam yağ oranı düştükçe incelir; bölgesel yağ yakmak mümkün değildir.
+  - Program değişince önceki kayıtlar silinmez; kas haritası her iki programın setlerini de sayar.
 
 ### Vücut: kas haritası ve vücut prototipi (Vücut sekmesi)
 - **Hangi kasları geliştiriyorsun:** her kettlebell hareketi çalıştırdığı kaslara eşlenir (ana kas 1,

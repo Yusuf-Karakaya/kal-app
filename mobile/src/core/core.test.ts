@@ -371,3 +371,33 @@ test('vücut prototipi geçerli SVG üretir ve yağ oranıyla genişler', () => 
   for (const m of ['chest', 'abs', 'quads']) assert.ok(thin.includes(`data-muscle="${m}"`));
   for (const m of ['upperback', 'glutes', 'hamstrings']) assert.ok(wide.includes(`data-muscle="${m}"`));
 });
+
+/* ---------- üst vücut odaklı program ---------- */
+import { PROGRAM_UPPER, programOf, resolveExercise } from './index';
+
+test('üst vücut programı: bacak koruma düzeyinde, üst vücut hedef aralıkta', () => {
+  const up = plannedVolume('upper');
+  const bal = plannedVolume('balanced');
+  assert.ok(up.quads <= 6, `ön bacak ${up.quads}`);
+  assert.ok(up.quads < bal.quads / 3 && up.hamstrings < bal.hamstrings / 2 && up.glutes < bal.glutes / 2);
+  for (const m of ['chest', 'upperback', 'biceps', 'triceps', 'shoulders'] as const) assert.ok(up[m] >= 10, `${m} ${up[m]}`);
+  assert.ok(up.chest > bal.chest && up.upperback > bal.upperback && up.biceps > bal.biceps);
+  assert.equal(PROGRAM_UPPER.length, 7);
+});
+
+test('program değişince eski kayıtlar karışmaz', () => {
+  const mon = '2026-11-09';
+  let d = structuredClone(DEFAULT_DATA);
+  d = toggleSet(d, mon, '0-0', 0); // dengeli programda goblet squat
+  d = { ...d, programFocus: 'upper' };
+  assert.equal(programOf(d)[0].name, 'Göğüs & Omuz (İtiş)');
+  assert.equal(dayProgress(d, mon).done, 0); // yeni programın setleri ayrı
+  d = toggleSet(d, mon, 'u0-0', 0); // üst vücut: floor press
+  assert.equal(resolveExercise(mon, 'u0-0')?.n, 'Tek Kol Floor Press');
+  assert.equal(resolveExercise(mon, '0-0')?.n, 'Tempolu Goblet Squat');
+  const v = dayVolume(d, mon);
+  assert.equal(v.quads, 1); // eski squat seti hâlâ sayılır
+  assert.equal(v.chest, 1);
+  assert.equal(dayProgress(d, mon).done, 1);
+  assert.ok(muscleAdvice(d).some((a) => a.text.includes('bölgesel')));
+});

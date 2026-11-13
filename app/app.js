@@ -617,19 +617,21 @@ function wkRing(p) {
 function renderWorkout() {
   const kb = data.kbWeight ?? 12;
   const week = K.weekProgress(data, wkKey);
-  $('#wkSub').textContent = `Tek ${kb} kg kettlebell · 5 antrenman · 2 dinlenme · bu hafta ${week.sessions}/${week.planned} antrenman`;
+  const focus = data.programFocus || 'balanced';
+  $('#wkSub').textContent = `Tek ${kb} kg kettlebell · ${K.FOCUS_LABEL[focus].toLocaleLowerCase('tr-TR')} · bu hafta ${week.sessions}/${week.planned} antrenman`;
+  $$('#wkFocus button').forEach((b) => { b.classList.toggle('on', b.dataset.focus === focus); b.setAttribute('aria-pressed', String(b.dataset.focus === focus)); });
   $('#wkPct').textContent = `${Math.round(week.ratio * 100)}%`;
   $('#wkNext').disabled = K.addDays(week.monday, 7) > K.todayKey();
 
   const tk = K.todayKey();
-  $('#wkRail').innerHTML = K.PROGRAM.map((p, i) => {
+  $('#wkRail').innerHTML = K.programOf(data).map((p, i) => {
     const key = K.addDays(week.monday, i);
     const c = K.dayProgress(data, key);
     return `<button type="button" class="wday${key === tk ? ' today' : ''}" data-wk="${key}" aria-pressed="${key === wkKey}">${p.k}
       <small>${p.rest ? '—' : c.total + ' set'}</small><span class="wbar"><i style="width:${c.ratio * 100}%"></i></span></button>`;
   }).join('');
 
-  const p = K.programFor(wkKey);
+  const p = K.programFor(wkKey, data);
   const c = K.dayProgress(data, wkKey);
   const dateTxt = K.keyToDate(wkKey).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
   const burn = K.burnedKcal(data, wkKey);
@@ -645,7 +647,7 @@ function renderWorkout() {
   p.blocks.forEach((b, bi) => {
     h += `<div class="block-t">${esc(b.t)}</div><div class="ex-list">`;
     b.ex.forEach((x, ei) => {
-      const ek = K.exKey(bi, ei);
+      const ek = K.exKey(bi, ei, data);
       const arr = sets[ek] || [];
       const all = arr.filter(Boolean).length === x.s;
       const vid = K.videoUrl(x.n);
@@ -703,6 +705,16 @@ function tickTimer() {
 function bindWorkout() {
   $('#wkNotes').innerHTML = K.PROGRESSION_NOTES.map((n) => `<li>${esc(n)}</li>`).join('')
     + '<li>Set kutusuna dokunduğunda o hareketin dinlenme sayacı başlar. Antrenman yaptığın gün su hedefin 500 ml artar.</li>';
+  $('#wkFocus').onclick = async (e) => {
+    const b = e.target.closest('[data-focus]');
+    if (!b || b.dataset.focus === (data.programFocus || 'balanced')) return;
+    const upper = b.dataset.focus === 'upper';
+    const ok = await askConfirm(upper
+      ? 'Üst vücut odaklı programa geçilsin mi? Göğüs, sırt, omuz ve kollar haftada 12–22 sete çıkar; bacaklar 4–8 setle yalnızca korunur, büyümez. Önceki kayıtların silinmez.'
+      : 'Dengeli programa geri dönülsün mü? Bacak ve kalça çalışması yeniden artar. Önceki kayıtların silinmez.', 'Geç');
+    if (!ok) return;
+    commit({ ...data, programFocus: b.dataset.focus }, `${K.FOCUS_LABEL[b.dataset.focus]} programa geçildi`);
+  };
   $('#wkRail').onclick = (e) => {
     const b = e.target.closest('[data-wk]');
     if (b) { wkKey = b.dataset.wk; renderWorkout(); }
@@ -717,8 +729,7 @@ function bindWorkout() {
     const setBtn = e.target.closest('[data-ek]');
     if (setBtn) {
       const ek = setBtn.dataset.ek, si = Number(setBtn.dataset.si);
-      const [bi, ei] = ek.split('-').map(Number);
-      const x = K.programFor(wkKey).blocks[bi].ex[ei];
+      const x = K.resolveExercise(wkKey, ek);
       const wasOn = !!(((data.workouts || {})[wkKey] || {})[ek] || [])[si];
       commit(K.toggleSet(data, wkKey, ek, si));
       if (!wasOn && x.rest && wkKey === K.todayKey()) startTimer(x.rest, x.n, si + 1, x.s);
@@ -764,7 +775,7 @@ function heatColors() {
 function renderBody() {
   const comp = K.composition(data);
   const week = K.weekVolume(data);
-  const planned = K.plannedVolume();
+  const planned = K.plannedVolume(data.programFocus || 'balanced');
   const target = data.profile.targetWeight;
   const goal = bodyMode === 'goal';
   let bf = comp.bodyFat, dev = K.development(data), heat = week, hint;
@@ -836,7 +847,7 @@ function renderMuscleDetail(week, planned) {
   const box = $('#muscleDetail');
   if (!selectedMuscle) { box.hidden = true; return; }
   const m = selectedMuscle;
-  const ex = K.exercisesFor(m);
+  const ex = K.exercisesFor(m, data.programFocus || 'balanced');
   const st = K.volumeStatus(week[m]);
   box.hidden = false;
   box.innerHTML = `<h3>${K.MUSCLES[m]}</h3>

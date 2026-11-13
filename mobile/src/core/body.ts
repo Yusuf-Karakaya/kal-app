@@ -1,6 +1,6 @@
 // Vücut: kas haritası, vücut kompozisyonu ve parametrik vücut prototipi (SVG)
 import { Data, Measure, addDays, todayKey } from './model';
-import { PROGRAM, exKey, programFor, programIndex } from './workout';
+import { Focus, PROGRAMS, programIndex, resolveExercise } from './workout';
 
 /* ===================== Kaslar ===================== */
 export type Muscle =
@@ -48,10 +48,19 @@ const MAP: Record<string, { m: Partial<Record<Muscle, number>>; f?: number }> = 
   'Hammer Curl': { m: { biceps: 1, forearms: 1 } },
   'Waiter Walk': { m: { shoulders: 1, traps: 0.5, abs: 0.5 } },
   'Swing → Clean → Press → Squat': { m: { glutes: 1, shoulders: 1, quads: 1, hamstrings: 0.5, forearms: 0.5 } },
-  'Kettlebell Snatch': { m: { shoulders: 1, glutes: 1, hamstrings: 0.5, traps: 0.5, forearms: 0.5 } },
+  'Kettlebell Snatch': { m: { shoulders: 1, glutes: 0.5, hamstrings: 0.5, traps: 0.5, forearms: 0.5 } },
   'Burpee': { m: { chest: 0.5, quads: 0.5, shoulders: 0.5 } },
   'Hollow Hold': { m: { abs: 1 } },
+  'Overhead Triceps Extension': { m: { triceps: 1 } },
+  'Kettlebell High Pull': { m: { upperback: 1, traps: 1, shoulders: 0.5, biceps: 0.5 } },
+  'Kettlebell Curl': { m: { biceps: 1, forearms: 0.5 } },
+  'Close-grip Push-up': { m: { triceps: 1, chest: 0.5, shoulders: 0.5 } },
+  'Clean → Press → Push-up': { m: { shoulders: 1, chest: 0.5, triceps: 0.5, forearms: 0.5, glutes: 0.25 } },
+  'Goblet Squat (hafif)': { m: { quads: 1, glutes: 0.5 } },
 };
+
+/** Alt vücut kasları (üst vücut odağında büyütülmez, korunur) */
+export const LOWER_BODY: Muscle[] = ['quads', 'hamstrings', 'glutes', 'adductors', 'calves'];
 
 export function musclesFor(exercise: string) {
   return MAP[exercise]?.m ?? {};
@@ -62,18 +71,16 @@ export const SET_TARGET = { min: 10, max: 20 };
 
 const emptyVolume = () => Object.fromEntries(MUSCLE_ORDER.map((m) => [m, 0])) as Record<Muscle, number>;
 
-/** Bir günde yapılan setlerden kas başına etkili set */
+/** Bir günde yapılan setlerden kas başına etkili set (hangi programla yapıldığından bağımsız) */
 export function dayVolume(data: Data, key: string): Record<Muscle, number> {
   const out = emptyVolume();
-  const p = programFor(key);
-  const sets = data.workouts?.[key] ?? {};
-  (p.blocks ?? []).forEach((b, bi) => b.ex.forEach((x, ei) => {
-    const n = (sets[exKey(bi, ei)] ?? []).filter(Boolean).length;
-    if (!n) return;
-    const map = MAP[x.n];
-    if (!map) return;
+  for (const [ek, arr] of Object.entries(data.workouts?.[key] ?? {})) {
+    const x = resolveExercise(key, ek);
+    const n = arr.filter(Boolean).length;
+    const map = x && MAP[x.n];
+    if (!map || !n) continue;
     for (const [m, w] of Object.entries(map.m) as [Muscle, number][]) out[m] += n * w * (map.f ?? 1);
-  }));
+  }
   return out;
 }
 
@@ -89,9 +96,9 @@ export function weekVolume(data: Data, key = todayKey()): Record<Muscle, number>
 }
 
 /** Program eksiksiz yapılırsa kas başına haftalık etkili set */
-export function plannedVolume(): Record<Muscle, number> {
+export function plannedVolume(focus: Focus = 'balanced'): Record<Muscle, number> {
   const out = emptyVolume();
-  PROGRAM.forEach((p) => (p.blocks ?? []).forEach((b) => b.ex.forEach((x) => {
+  PROGRAMS[focus].forEach((p) => (p.blocks ?? []).forEach((b) => b.ex.forEach((x) => {
     const map = MAP[x.n];
     if (!map) return;
     for (const [m, w] of Object.entries(map.m) as [Muscle, number][]) out[m] += x.s * w * (map.f ?? 1);
@@ -126,9 +133,9 @@ export const STATUS_LABEL: Record<VolumeStatus, string> = {
 };
 
 /** Bir kası en çok çalıştıran program hareketleri */
-export function exercisesFor(muscle: Muscle): { name: string; day: string; weight: number }[] {
+export function exercisesFor(muscle: Muscle, focus: Focus = 'balanced'): { name: string; day: string; weight: number }[] {
   const out: { name: string; day: string; weight: number }[] = [];
-  PROGRAM.forEach((p) => (p.blocks ?? []).forEach((b) => b.ex.forEach((x) => {
+  PROGRAMS[focus].forEach((p) => (p.blocks ?? []).forEach((b) => b.ex.forEach((x) => {
     const w = MAP[x.n]?.m[muscle];
     if (w && w >= 0.5 && !out.some((o) => o.name === x.n)) out.push({ name: x.n, day: p.k, weight: w });
   })));
@@ -143,15 +150,19 @@ export const EXTRA_SUGGEST: Partial<Record<Muscle, string>> = {
   biceps: 'Biseps için Cuma hammer curl’e ek olarak 2 × 12 tek kol kettlebell curl ekleyebilirsin.',
 };
 
-/** Haftalık hacmi düşük kaslar için öneri metinleri (en fazla 3) */
-export function muscleAdvice(data: Data, key = todayKey()): { muscle: Muscle; text: string }[] {
-  const planned = plannedVolume();
+/** Seçili programın az çalıştırdığı kaslar için öneriler (en fazla 3) */
+export function muscleAdvice(data: Data): { muscle: Muscle; text: string }[] {
+  const focus: Focus = data.programFocus ?? 'balanced';
+  const planned = plannedVolume(focus);
   const out: { muscle: Muscle; text: string }[] = [];
+  if (focus === 'upper') {
+    out.push({ muscle: 'quads', text: 'Üst vücut odağındasın: bacaklar haftada birkaç setle yalnızca korunuyor. Bacakların, toplam yağ oranın düştükçe incelir; bölgesel yağ yakmak mümkün değil.' });
+  }
   for (const m of MUSCLE_ORDER) {
     if (planned[m] >= SET_TARGET.min * 0.6) continue;
+    if (focus === 'upper' && LOWER_BODY.includes(m)) continue;
     out.push({ muscle: m, text: EXTRA_SUGGEST[m] ?? `${MUSCLES[m]} programda az çalışılıyor (haftada ~${Math.round(planned[m])} set).` });
   }
-  void data; void key;
   return out.slice(0, 3);
 }
 

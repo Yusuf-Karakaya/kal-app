@@ -26,7 +26,7 @@ export default function BodyScreen({ data, commit }: { data: Data; commit: (d: D
 
   const comp = composition(data);
   const week = useMemo(() => weekVolume(data), [data]);
-  const planned = useMemo(() => plannedVolume(), []);
+  const planned = useMemo(() => plannedVolume(data.programFocus ?? 'balanced'), [data.programFocus]);
   const target = data.profile.targetWeight;
   const goal = mode === 'goal';
   const bf = goal && target ? projectedBodyFat(comp, target) : comp.bodyFat;
@@ -87,7 +87,7 @@ export default function BodyScreen({ data, commit }: { data: Data; commit: (d: D
             <Text style={{ color: c.text }}>
               Bu hafta {fmt1(week[selected])} etkili set ({STATUS_LABEL[volumeStatus(week[selected])]}). Program eksiksiz yapılırsa haftada {fmt1(planned[selected])} set.
             </Text>
-            {exercisesFor(selected).slice(0, 5).map((e) => (
+            {exercisesFor(selected, data.programFocus ?? 'balanced').slice(0, 5).map((e) => (
               <Text key={e.name} style={{ color: c.muted, fontSize: 13 }}>• {e.name} ({e.day}{e.weight < 1 ? ', yardımcı' : ''})</Text>
             ))}
             {EXTRA_SUGGEST[selected] && planned[selected] < 6 ? <Text style={{ color: c.text, fontSize: 13 }}>{EXTRA_SUGGEST[selected]}</Text> : null}

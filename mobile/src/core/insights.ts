@@ -188,10 +188,10 @@ export function dailyInsights(data: Data, key: string, now = new Date()): Insigh
   // Antrenman
   const wGoal = waterGoalOn(data, key);
   const wp = dayProgress(data, key);
-  const prog = programFor(key);
+  const prog = programFor(key, data);
   if (wp.done > 0 && wp.ratio >= 1) {
     out.push({ tone: 'good', text: `${prog.name} tamamlandı, ~${fmt(burnedKcal(data, key))} kcal yaktın. Protein ve suyu ihmal etme.` });
-  } else if (isToday && isTrainingDay(key) && wp.done === 0 && hour >= 16) {
+  } else if (isToday && isTrainingDay(key, data) && wp.done === 0 && hour >= 16) {
     out.push({ tone: 'info', text: `Bugün ${prog.name.toLocaleLowerCase('tr-TR')} günü. Antrenman sekmesinden başlayabilirsin.` });
   }
 

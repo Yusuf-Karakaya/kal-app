@@ -94,6 +94,8 @@ export interface Data {
   kbWeight?: number;
   /** Tarih -> vücut ölçüleri */
   measures?: Record<string, Measure>;
+  /** Antrenman programı odağı */
+  programFocus?: 'balanced' | 'upper';
 }
 
 export const DEFAULT_DATA: Data = {
