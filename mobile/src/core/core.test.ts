@@ -312,3 +312,62 @@ test('antrenman: set işaretleme, ilerleme ve su bonusu', () => {
   assert.equal(w.planned, 5);
   assert.equal(PROGRAM.length, 7);
 });
+
+/* ---------- vücut ---------- */
+import {
+  MUSCLE_ORDER, bodySvg, composition, dayVolume, development, muscleAdvice, navyBodyFat, plannedVolume, setMeasure, weekVolume,
+} from './index';
+
+test('kas hacmi: yapılan setler kaslara dağıtılır', () => {
+  const mon = '2026-11-09';
+  let d = structuredClone(DEFAULT_DATA);
+  for (let si = 0; si < 4; si++) d = toggleSet(d, mon, '0-0', si); // 4 set goblet squat
+  const v = dayVolume(d, mon);
+  assert.equal(v.quads, 4);
+  assert.equal(v.glutes, 4);
+  assert.equal(v.adductors, 2);
+  assert.equal(v.chest, 0);
+  assert.equal(weekVolume(d, '2026-11-15').quads, 4); // aynı hafta (Pazar)
+  assert.equal(weekVolume(d, '2026-11-16').quads, 0); // sonraki hafta
+  assert.ok(development(d, '2026-11-12').quads > 0);
+});
+
+test('program kasları çalıştırıyor; eksik kalanlar için öneri var', () => {
+  const p = plannedVolume();
+  for (const m of MUSCLE_ORDER) if (m !== 'calves') assert.ok(p[m] >= 3, `${m}: ${p[m]}`);
+  assert.ok(p.calves < 1); // programda baldır hareketi yok
+  const advice = muscleAdvice(structuredClone(DEFAULT_DATA));
+  assert.ok(advice.some((a) => a.muscle === 'calves'));
+});
+
+test('ABD Donanması yağ oranı', () => {
+  const m = navyBodyFat('m', 178, { waist: 85, neck: 38 })!;
+  assert.ok(m > 15 && m < 19, `erkek ${m}`);
+  const f = navyBodyFat('f', 165, { waist: 72, neck: 32, hip: 98 })!;
+  assert.ok(f > 24 && f < 30, `kadın ${f}`);
+  assert.equal(navyBodyFat('f', 165, { waist: 72, neck: 32 }), null); // kalça olmadan hesaplanmaz
+});
+
+test('kompozisyon ve ölçü kaydı', () => {
+  let d = structuredClone(DEFAULT_DATA);
+  d.profile = { ...d.profile, sex: 'm', height: 178, weight: 80, age: 30 };
+  assert.equal(composition(d).source, 'bmi');
+  d = setMeasure(d, '2026-11-01', { waist: 85, neck: 38 });
+  d = setMeasure(d, '2026-11-10', { arm: 34 });
+  const c = composition(d);
+  assert.equal(c.source, 'navy');
+  assert.ok(Math.abs(c.leanKg + c.fatKg - 80) < 0.01);
+  assert.ok(c.ffmi > 18 && c.ffmi < 24, `ffmi ${c.ffmi}`);
+  assert.ok(c.whtr! > 0.47 && c.whtr! < 0.48);
+});
+
+test('vücut prototipi geçerli SVG üretir ve yağ oranıyla genişler', () => {
+  const colors = { skin: '#eee', outline: '#999', none: '#ddd', low: '#cfe', building: '#9d9', ideal: '#383', high: '#a33', text: '#000' };
+  const dev = Object.fromEntries(MUSCLE_ORDER.map((m) => [m, 0])) as never;
+  const thin = bodySvg({ sex: 'm', bodyFat: 12, dev, heat: dev, view: 'front', colors });
+  const wide = bodySvg({ sex: 'm', bodyFat: 30, dev, heat: dev, view: 'back', colors });
+  assert.ok(thin.startsWith('<svg') && thin.endsWith('</svg>'));
+  assert.ok(!/NaN|undefined/.test(thin + wide));
+  for (const m of ['chest', 'abs', 'quads']) assert.ok(thin.includes(`data-muscle="${m}"`));
+  for (const m of ['upperback', 'glutes', 'hamstrings']) assert.ok(wide.includes(`data-muscle="${m}"`));
+});

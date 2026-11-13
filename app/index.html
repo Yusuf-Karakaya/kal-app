@@ -121,6 +121,55 @@
       </div>
     </section>
 
+    <!-- VÜCUT -->
+    <section class="view" id="view-body">
+      <div class="card">
+        <div class="card-head">
+          <h2>Vücut prototipin</h2>
+          <span class="muted" id="bodyBf"></span>
+        </div>
+        <div class="seg" id="bodyModeSeg" role="group" aria-label="Şimdi ya da hedef">
+          <button type="button" data-mode="now" class="on" aria-pressed="true">Şimdi</button>
+          <button type="button" data-mode="goal" aria-pressed="false">Hedef</button>
+        </div>
+        <div class="figure-row">
+          <div class="figure" id="figFront"></div>
+          <div class="figure" id="figBack"></div>
+        </div>
+        <div class="heat-legend" aria-label="Renk anlamları">
+          <span><i class="hl none"></i>çalışılmadı</span><span><i class="hl low"></i>az</span>
+          <span><i class="hl building"></i>gelişiyor</span><span><i class="hl ideal"></i>ideal</span><span><i class="hl high"></i>yüksek</span>
+        </div>
+        <p class="hint" id="bodyHint"></p>
+        <div class="muscle-detail" id="muscleDetail" hidden></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Kaslar: bu hafta</h2>
+          <span class="muted">hedef 10–20 etkili set</span>
+        </div>
+        <div id="muscleList"></div>
+        <div id="muscleAdvice"></div>
+      </div>
+
+      <div class="card">
+        <h2>Vücut ölçülerin</h2>
+        <div class="comp" id="compStats"></div>
+        <form id="measureForm" class="grid-form">
+          <label>Bel (cm) <input type="text" inputmode="decimal" id="mWaist" placeholder="göbek hizası" /></label>
+          <label>Boyun (cm) <input type="text" inputmode="decimal" id="mNeck" placeholder="gırtlağın altı" /></label>
+          <label id="mHipWrap">Kalça (cm) <input type="text" inputmode="decimal" id="mHip" placeholder="en geniş yer" /></label>
+          <label>Göğüs (cm) <input type="text" inputmode="decimal" id="mChest" /></label>
+          <label>Pazı (cm) <input type="text" inputmode="decimal" id="mArm" placeholder="kasılı" /></label>
+          <label>Uyluk (cm) <input type="text" inputmode="decimal" id="mThigh" /></label>
+          <button type="submit" class="btn full">Ölçüleri kaydet</button>
+        </form>
+        <p class="hint">Sabah, aç karnına, mezurayı sıkmadan ölç. Yağ oranı bel ve boyundan (kadınlarda kalça da) ABD Donanması yöntemiyle hesaplanır; ölçü girmezsen boy-kilodan kaba tahmin yapılır. Haftada bir ölçmek yeterli.</p>
+        <div id="measureHistory"></div>
+      </div>
+    </section>
+
     <!-- İLERLEME -->
     <section class="view" id="view-progress">
       <div class="card">
@@ -255,6 +304,7 @@
   <nav class="tabbar">
     <button class="tab active" data-view="today"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5M5.5 9.8V20h5v-5.5h3V20h5V9.8"/></svg><span>Bugün</span></button>
     <button class="tab" data-view="workout"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6.5a3 3 0 0 1 6 0"/><path d="M8.2 8h7.6l2 9.5a2 2 0 0 1-2 2.5H8.2a2 2 0 0 1-2-2.5z"/><path d="M9.5 5.5V8M14.5 5.5V8"/></svg><span>Antrenman</span></button>
+    <button class="tab" data-view="body"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="4.5" r="2"/><path d="M5 9l7-1 7 1M12 8v6M12 14l-3 7M12 14l3 7M7.5 9.5 6 15M16.5 9.5 18 15"/></svg><span>Vücut</span></button>
     <button class="tab" data-view="progress"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M4 16l5-5 4 3 7-8"/></svg><span>İlerleme</span></button>
     <button class="tab" data-view="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M21.2 12h-2.6M5.4 12H2.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8M18.5 18.5l-1.8-1.8M7.3 7.3 5.5 5.5"/></svg><span>Ayarlar</span></button>
   </nav>

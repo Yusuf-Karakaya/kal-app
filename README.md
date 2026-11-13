@@ -1,4 +1,4 @@
-# Kal – Kalori, Su ve Kettlebell Takibi
+# Kal – Kalori, Su, Kettlebell ve Vücut Takibi
 
 **Canlı adres:** https://yusuf-karakaya.github.io/kal-app/ (telefonda açıp "Ana ekrana ekle")
 
@@ -67,6 +67,21 @@ kalori, protein, karbonhidrat ve yağı hesaplar.
 - Haftalık ilerleme, geçmiş haftalara gezinme, yakılan kalori tahmini (MET tabanlı).
 - **Kal ile bağlantılı:** antrenman yapılan gün su hedefi 500 ml artar; antrenman ve protein önerileri gelir.
 
+### Vücut: kas haritası ve vücut prototipi (Vücut sekmesi)
+- **Hangi kasları geliştiriyorsun:** her kettlebell hareketi çalıştırdığı kaslara eşlenir (ana kas 1,
+  yardımcı kas 0,5). Yaptığın setlerden 15 kas grubu için haftalık **etkili set** hesaplanır ve kas
+  gelişimi için önerilen 10–20 set/hafta aralığıyla karşılaştırılır.
+- **Vücut prototipi:** önden ve arkadan çizilen bir vücut. Kaslar bu haftaki çalışmana göre renklenir;
+  omuz, bel, kol ve bacak genişliği yağ oranına ve son 4 haftadaki antrenmanlarına göre değişir.
+  Bir kasa dokununca o hafta kaç set yaptığını ve hangi hareketlerin çalıştırdığını görürsün.
+- **Hedef görünümü:** hedef kilona yağsız kütleni koruyarak indiğinde ve programı eksiksiz yaptığında
+  vücudunun nasıl görüneceğini gösterir.
+- **Vücut ölçüleri:** bel, boyun, kalça, göğüs, pazı, uyluk. Yağ oranı ABD Donanması yöntemiyle (ölçü
+  yoksa boy-kilodan kaba tahmin), yağsız kütle, beden kitle indeksi, FFMI ve bel/boy oranı hesaplanır.
+- **Program analizi:** mevcut kettlebell programı baldırı neredeyse hiç, bisepsi az çalıştırıyor; uygulama
+  bunlar için ek hareket önerir.
+- Prototip temsilidir; gerçek vücut şeklini değil, ölçülerden ve antrenmanlardan çıkan eğilimi gösterir.
+
 ### Gizlilik ve parola kilidi
 - **Kod herkese açık, verilerin değil.** Yediklerin, kilon, antrenmanların ve profilin yalnızca kendi
   cihazında (tarayıcının yerel depolaması / telefonun uygulama alanı) tutulur; hiçbir sunucuya,
@@ -128,12 +143,13 @@ mobile/
     model.ts                 veri modeli, hedef ve makro hesapları, kayıt işlemleri
     insights.ts              kilo trendi, harcama tahmini, seriler, öneriler
     workout.ts               Kettlebell Haftası programı ve antrenman takibi
+    body.ts                  kas haritası, vücut kompozisyonu, vücut prototipi (SVG)
     core.test.ts             testler: npm run test:core
   App.tsx                    sekmeler, veri akışı, bildirim butonlarının işlenmesi
   src/data.ts                AsyncStorage + çekirdeğin dışa aktarımı
   src/notifications.ts       bildirim izinleri, kanal/buton tanımları, planlama
   src/ui.tsx                 tema (açık/koyu) ve ortak bileşenler
-  src/screens/               Bugün, Antrenman, İlerleme, Ayarlar ekranları
+  src/screens/               Bugün, Antrenman, Vücut, İlerleme, Ayarlar ekranları
 app/
   core.js                    çekirdeğin derlenmiş hali (elle düzenlenmez)
   index.html, app.js, style.css, sw.js

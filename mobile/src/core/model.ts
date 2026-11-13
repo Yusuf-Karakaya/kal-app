@@ -66,6 +66,16 @@ export interface Reminders {
   weigh?: string;
 }
 
+/** Vücut çevre ölçüleri (cm) */
+export interface Measure {
+  waist?: number; // bel (göbek hizası)
+  neck?: number;
+  hip?: number; // kalça (kadınlarda yağ hesabı için)
+  chest?: number;
+  arm?: number; // pazı
+  thigh?: number;
+}
+
 export interface Data {
   version: 2;
   profile: Profile;
@@ -82,6 +92,8 @@ export interface Data {
   workouts?: Record<string, Record<string, boolean[]>>;
   /** Kettlebell ağırlığı (kg) */
   kbWeight?: number;
+  /** Tarih -> vücut ölçüleri */
+  measures?: Record<string, Measure>;
 }
 
 export const DEFAULT_DATA: Data = {
@@ -123,6 +135,7 @@ export function migrate(raw: unknown): Data {
     favDrinks: d.favDrinks ?? base.favDrinks,
     workouts: d.workouts ?? {},
     kbWeight: d.kbWeight ?? base.kbWeight,
+    measures: d.measures ?? {},
   };
 }
 

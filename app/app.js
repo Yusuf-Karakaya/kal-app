@@ -465,6 +465,7 @@ function render() {
   renderToday();
   if ($('#view-progress').classList.contains('active')) renderProgress();
   if ($('#view-workout').classList.contains('active')) renderWorkout();
+  if ($('#view-body').classList.contains('active')) renderBody();
 }
 
 /* ================== Bildirimler ================== */
@@ -746,6 +747,130 @@ function bindWorkout() {
   $('#tskip').onclick = () => { clearInterval(timer.iv); $('#timer').classList.remove('show'); };
 }
 
+
+/* ================== Vücut ================== */
+let bodyMode = 'now';
+let selectedMuscle = null;
+
+function heatColors() {
+  const cs = getComputedStyle(document.documentElement);
+  const v = (n) => cs.getPropertyValue(n).trim();
+  return {
+    skin: v('--body-skin'), outline: v('--body-line'), none: v('--heat-none'), low: v('--heat-low'),
+    building: v('--heat-building'), ideal: v('--heat-ideal'), high: v('--heat-high'), text: v('--text'),
+  };
+}
+
+function renderBody() {
+  const comp = K.composition(data);
+  const week = K.weekVolume(data);
+  const planned = K.plannedVolume();
+  const target = data.profile.targetWeight;
+  const goal = bodyMode === 'goal';
+  let bf = comp.bodyFat, dev = K.development(data), heat = week, hint;
+  if (goal) {
+    bf = target ? K.projectedBodyFat(comp, target) : comp.bodyFat;
+    dev = Object.fromEntries(K.MUSCLE_ORDER.map((m) => [m, Math.min(1, planned[m] / 15)]));
+    heat = planned;
+    hint = target
+      ? `Hedef: ${fmt1(target)} kg, yağsız kütle korunursa yaklaşık %${fmt1(bf)} yağ. Program her hafta eksiksiz yapılırsa kaslar bu renklere ulaşır.`
+      : "Ayarlar'dan hedef kilonu girersen o kilodaki görünümünü gösteririm. Renkler program eksiksiz yapılınca ulaşılan haftalık seti gösterir.";
+  } else {
+    hint = 'Şekil son 4 haftadaki antrenmanlarına ve yağ oranına, renkler bu haftaki etkili setlere göre. Bir kasa dokun.';
+  }
+  $('#bodyBf').textContent = `%${fmt1(bf)} yağ${comp.source === 'bmi' && !goal ? ' (tahmini)' : ''}`;
+  $$('#bodyModeSeg button').forEach((b) => {
+    b.classList.toggle('on', b.dataset.mode === bodyMode);
+    b.setAttribute('aria-pressed', String(b.dataset.mode === bodyMode));
+  });
+  const colors = heatColors();
+  const opts = { sex: data.profile.sex, bodyFat: bf, dev, heat, colors, selected: selectedMuscle };
+  $('#figFront').innerHTML = K.bodySvg({ ...opts, view: 'front' }) + '<div class="figure-cap">Önden</div>';
+  $('#figBack').innerHTML = K.bodySvg({ ...opts, view: 'back' }) + '<div class="figure-cap">Arkadan</div>';
+  $('#bodyHint').textContent = hint;
+  renderMuscleDetail(week, planned);
+
+  // Kas listesi
+  const max = 30;
+  $('#muscleList').innerHTML = K.MUSCLE_ORDER.map((m) => {
+    const v = week[m], st = K.volumeStatus(v);
+    return `<button type="button" class="m-row" data-m="${m}" aria-pressed="${selectedMuscle === m}">
+      <span class="m-name">${K.MUSCLES[m]}</span>
+      <span class="m-track"><span class="m-band" style="left:${(K.SET_TARGET.min / max) * 100}%;width:${((K.SET_TARGET.max - K.SET_TARGET.min) / max) * 100}%"></span>
+        <span class="m-fill" style="width:${Math.min(1, v / max) * 100}%;background:${st === 'none' ? 'transparent' : colors[st]}"></span></span>
+      <span class="m-val">${fmt1(v)} set · ${K.STATUS_LABEL[st]}</span></button>`;
+  }).join('');
+  const advice = K.muscleAdvice(data);
+  $('#muscleAdvice').innerHTML = advice.map((a) => `<div class="insight info" style="margin-top:8px">${esc(a.text)}</div>`).join('');
+
+  // Kompozisyon
+  const kgTxt = (v) => `${fmt1(v)} kg`;
+  const male = data.profile.sex === 'm';
+  const ffmiLabel = comp.ffmi < (male ? 18 : 14) ? 'düşük' : comp.ffmi < (male ? 22 : 17) ? 'ortalama' : 'kaslı';
+  $('#compStats').innerHTML = `
+    <div><strong>%${fmt1(comp.bodyFat)}</strong><span>yağ oranı${comp.source === 'bmi' ? ' (tahmini)' : ''}</span><em>${comp.fatLabel}</em></div>
+    <div><strong>${kgTxt(comp.leanKg)}</strong><span>yağsız kütle</span><em>yağ ${kgTxt(comp.fatKg)}</em></div>
+    <div><strong>${fmt1(comp.bmi)}</strong><span>beden kitle indeksi</span><em>${comp.bmiLabel}</em></div>
+    <div><strong>${fmt1(comp.ffmi)}</strong><span>FFMI (kas indeksi)</span><em>${ffmiLabel}</em></div>
+    <div><strong>${comp.whtr ? (Math.round(comp.whtr * 100) / 100).toLocaleString('tr-TR') : '—'}</strong><span>bel / boy</span><em>${comp.whtrLabel ?? 'beli ölç'}</em></div>
+    <div><strong>${fmt1(data.profile.weight)} kg</strong><span>kilo</span><em>${target ? `hedef ${fmt1(target)} kg` : ''}</em></div>`;
+
+  const last = K.latestMeasure(data);
+  const m = (last && last.m) || {};
+  const set = (id, v) => { if (document.activeElement !== $(id)) $(id).value = v ? fmt1(v) : ''; };
+  set('#mWaist', m.waist); set('#mNeck', m.neck); set('#mHip', m.hip); set('#mChest', m.chest); set('#mArm', m.arm); set('#mThigh', m.thigh);
+  $('#mHip').placeholder = data.profile.sex === 'f' ? 'yağ hesabı için gerekli' : 'en geniş yer';
+
+  const keys = Object.keys(data.measures || {}).sort().slice(-6).reverse();
+  const c = (v) => (v ? fmt1(v) : '—');
+  $('#measureHistory').innerHTML = keys.length ? `<div style="overflow-x:auto"><table>
+    <tr><th>Tarih</th><th>Bel</th><th>Boyun</th><th>Kalça</th><th>Göğüs</th><th>Pazı</th><th>Uyluk</th></tr>
+    ${keys.map((k) => {
+      const r = data.measures[k];
+      return `<tr><td>${K.keyToDate(k).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}</td><td>${c(r.waist)}</td><td>${c(r.neck)}</td><td>${c(r.hip)}</td><td>${c(r.chest)}</td><td>${c(r.arm)}</td><td>${c(r.thigh)}</td></tr>`;
+    }).join('')}
+  </table></div>` : '';
+}
+
+function renderMuscleDetail(week, planned) {
+  const box = $('#muscleDetail');
+  if (!selectedMuscle) { box.hidden = true; return; }
+  const m = selectedMuscle;
+  const ex = K.exercisesFor(m);
+  const st = K.volumeStatus(week[m]);
+  box.hidden = false;
+  box.innerHTML = `<h3>${K.MUSCLES[m]}</h3>
+    <div>Bu hafta <b>${fmt1(week[m])}</b> etkili set (${K.STATUS_LABEL[st]}). Program eksiksiz yapılırsa haftada ${fmt1(planned[m])} set.</div>
+    ${ex.length ? `<ul>${ex.slice(0, 5).map((e) => `<li>${esc(e.name)} <small>(${e.day}${e.weight < 1 ? ', yardımcı' : ''})</small></li>`).join('')}</ul>` : ''}
+    ${K.EXTRA_SUGGEST[m] && planned[m] < 6 ? `<p style="margin:8px 0 0">${esc(K.EXTRA_SUGGEST[m])}</p>` : ''}`;
+}
+
+function bindBody() {
+  $('#bodyModeSeg').onclick = (e) => {
+    const b = e.target.closest('[data-mode]');
+    if (b) { bodyMode = b.dataset.mode; renderBody(); }
+  };
+  const pick = (m) => { selectedMuscle = selectedMuscle === m ? null : m; renderBody(); };
+  ['#figFront', '#figBack'].forEach((id) => ($(id).onclick = (e) => {
+    const g = e.target.closest('[data-muscle]');
+    if (g) pick(g.dataset.muscle);
+  }));
+  $('#muscleList').onclick = (e) => {
+    const b = e.target.closest('[data-m]');
+    if (!b) return;
+    pick(b.dataset.m);
+    if (selectedMuscle) $('#muscleDetail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+  $('#measureForm').onsubmit = (e) => {
+    e.preventDefault();
+    const num = (id) => { const v = Number(String($(id).value).replace(',', '.')); return v > 0 && v < 300 ? v : undefined; };
+    const m = { waist: num('#mWaist'), neck: num('#mNeck'), hip: num('#mHip'), chest: num('#mChest'), arm: num('#mArm'), thigh: num('#mThigh') };
+    if (!Object.values(m).some(Boolean)) { toast('En az bir ölçü gir'); return; }
+    if (m.waist && m.neck && m.neck >= m.waist) { toast('Boyun ölçüsü belden küçük olmalı'); return; }
+    commit(K.setMeasure(data, K.todayKey(), m), 'Ölçüler kaydedildi');
+  };
+}
+
 /* ================== Olaylar ================== */
 function switchTab(view) {
   $$('.tab').forEach((t) => t.classList.toggle('active', t.dataset.view === view));
@@ -754,6 +879,7 @@ function switchTab(view) {
   if (view === 'progress') renderProgress();
   if (view === 'settings') renderSettings();
   if (view === 'workout') { wkKey = K.todayKey(); renderWorkout(); }
+  if (view === 'body') renderBody();
   window.scrollTo(0, 0);
 }
 
@@ -1118,6 +1244,7 @@ async function init() {
   if (lockedEnvelope) await showLockScreen();
   bindEvents();
   bindWorkout();
+  bindBody();
   renderDrinks();
   render();
 

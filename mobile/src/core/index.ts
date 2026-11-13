@@ -4,3 +4,4 @@ export * from './parse';
 export * from './model';
 export * from './insights';
 export * from './workout';
+export * from './body';

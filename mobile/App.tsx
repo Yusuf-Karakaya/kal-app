@@ -7,16 +7,18 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Data, addWater, dateKey, dayLabel, keyToDate, loadData, saveData, todayKey } from './src/data';
 import { hasPermission, requestPermission, reschedule, sendTest, setupNotifications } from './src/notifications';
+import BodyScreen from './src/screens/BodyScreen';
 import ProgressScreen from './src/screens/ProgressScreen';
 import WorkoutScreen, { RestTimer, RestTimerBar } from './src/screens/WorkoutScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import TodayScreen from './src/screens/TodayScreen';
 import { ThemeContext, dark, light } from './src/ui';
 
-type Tab = 'today' | 'workout' | 'progress' | 'settings';
+type Tab = 'today' | 'workout' | 'body' | 'progress' | 'settings';
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: 'today', label: 'Bugün', icon: '◉' },
   { key: 'workout', label: 'Antrenman', icon: '⚑' },
+  { key: 'body', label: 'Vücut', icon: '☺' },
   { key: 'progress', label: 'İlerleme', icon: '↗' },
   { key: 'settings', label: 'Ayarlar', icon: '⚙' },
 ];
@@ -148,6 +150,7 @@ export default function App() {
             <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
               {tab === 'today' && <TodayScreen data={data} dayKey={dayKey} commit={commit} />}
               {tab === 'workout' && <WorkoutScreen data={data} commit={commit} startTimer={setRestTimer} />}
+              {tab === 'body' && <BodyScreen data={data} commit={commit} />}
               {tab === 'progress' && <ProgressScreen data={data} commit={commit} />}
               {tab === 'settings' && (
                 <SettingsScreen
@@ -174,7 +177,7 @@ export default function App() {
           {TABS.map((t) => (
             <Pressable key={t.key} onPress={() => setTab(t.key)} style={styles.tab} accessibilityRole="tab" accessibilityState={{ selected: tab === t.key }}>
               <Text style={{ fontSize: 20, color: tab === t.key ? theme.leaf : theme.muted }}>{t.icon}</Text>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: tab === t.key ? theme.leaf : theme.muted }}>{t.label}</Text>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: tab === t.key ? theme.leaf : theme.muted }} numberOfLines={1}>{t.label}</Text>
             </Pressable>
           ))}
         </SafeAreaView>
