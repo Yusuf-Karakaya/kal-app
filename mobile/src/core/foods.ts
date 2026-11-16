@@ -28,6 +28,11 @@ export type FoodGroup =
   | 'meyve' | 'kuruyemis' | 'tatli' | 'icecek' | 'diger';
 
 import { ALIAS_ADD, EXT_ROWS } from './foods_ext';
+import { BRAND_ALIAS_ADD, BRAND_ROWS } from './foods_brands';
+import { CHAIN_ROWS } from './foods_chains';
+
+const EXTRA_ALIASES: Record<string, string> = { ...ALIAS_ADD };
+for (const [k, v] of Object.entries(BRAND_ALIAS_ADD)) EXTRA_ALIASES[k] = EXTRA_ALIASES[k] ? EXTRA_ALIASES[k] + '|' + v : v;
 
 // [id, ad, ek adlar ("|" ile), kcal, p, c, f, varsayılan birim, gram, diğer birimler ("birim:g,..."), grup, ek]
 type Row = [string, string, string, number, number, number, number, string, number, string, FoodGroup, Partial<Food>?];
@@ -279,8 +284,8 @@ const ROWS: Row[] = [
   ['bitter', 'Bitter çikolata', 'bitter|bitter çikolata|siyah çikolata', 550, 7.8, 45, 38, 'kare', 6, 'adet:40,paket:80', 'tatli'],
   ['kek', 'Kek', 'kek|pasta|yaş pasta', 380, 5.5, 50, 18, 'dilim', 80, '', 'tatli'],
   ['kurabiye', 'Kurabiye', 'kurabiye|un kurabiyesi|cookie', 480, 6, 62, 23, 'adet', 15, '', 'tatli'],
-  ['biskuvi', 'Bisküvi', 'bisküvi|petibör|kraker|galeta', 450, 7, 70, 15, 'adet', 8, 'paket:75', 'tatli'],
-  ['gofret', 'Gofret / çikolatalı bar', 'gofret|çikolatalı bar|bar|albeni|kitkat', 520, 6, 64, 27, 'adet', 35, '', 'tatli'],
+  ['biskuvi', 'Bisküvi', 'bisküvi|kraker|galeta', 450, 7, 70, 15, 'adet', 8, 'paket:75', 'tatli'],
+  ['gofret', 'Gofret / çikolatalı bar', 'gofret|çikolatalı bar|bar|kitkat', 520, 6, 64, 27, 'adet', 35, '', 'tatli'],
   ['asure', 'Aşure', 'aşure', 140, 3, 28, 2, 'kase', 200, '', 'tatli'],
   ['profiterol', 'Profiterol', 'profiterol|ekler', 280, 5, 30, 16, 'porsiyon', 150, '', 'tatli'],
   ['cips', 'Cips', 'cips|patates cipsi|mısır cipsi', 536, 7, 53, 34, 'paket', 40, 'avuç:20,büyük paket:110', 'tatli'],
@@ -326,9 +331,9 @@ function parseUnits(s: string): Record<string, number> {
   return out;
 }
 
-export const FOODS: Food[] = [...ROWS, ...(EXT_ROWS as Row[])].map(([id, name, aliases, kcal, p, c, f, unit, grams, units, group, extra]) => ({
+export const FOODS: Food[] = [...ROWS, ...(EXT_ROWS as Row[]), ...(BRAND_ROWS as Row[]), ...(CHAIN_ROWS as Row[])].map(([id, name, aliases, kcal, p, c, f, unit, grams, units, group, extra]) => ({
   id, name,
-  aliases: [...aliases.split('|'), ...(ALIAS_ADD[id] ? ALIAS_ADD[id].split('|') : [])].map((a) => a.trim()),
+  aliases: [...aliases.split('|'), ...(EXTRA_ALIASES[id] ? EXTRA_ALIASES[id].split('|') : [])].map((a) => a.trim()),
   kcal, p, c, f, unit, grams,
   units: { [unit]: grams, ...parseUnits(units) },
   group,

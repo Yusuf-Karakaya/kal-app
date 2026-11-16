@@ -1,5 +1,5 @@
 // Service worker: çevrimdışı önbellek + bildirim tıklama
-const CACHE = 'kal-v9';
+const CACHE = 'kal-v10';
 const ASSETS = ['./', './index.html', './style.css', './core.js', './app.js', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', (e) => {

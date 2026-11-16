@@ -165,7 +165,8 @@ export function detectMeal(text: string): MealKey | undefined {
 interface IndexedAlias { food: Food; tokens: string[]; len: number }
 const ALIAS_INDEX: IndexedAlias[] = FOODS.flatMap((food) =>
   food.aliases.map((a) => {
-    const tokens = fold(a).split(/\s+/);
+    // Kullanıcı metniyle aynı biçimde sadeleştir ("mcdonald's" → "mcdonald s")
+    const tokens = fold(a).replace(/[^a-z0-9.,/\s]/g, ' ').trim().split(/\s+/);
     return { food, tokens, len: tokens.join('').length };
   }),
 );
