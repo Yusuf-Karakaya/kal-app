@@ -1,7 +1,7 @@
 // Vücut: kas haritası, vücut kompozisyonu ve parametrik vücut prototipi (SVG)
 import { Data, Measure, addDays, daysBetween, todayKey } from './model';
 import { ANATOMY } from './anatomy';
-import { Focus, PROGRAMS, programIndex, resolveExercise } from './workout';
+import { ACTIVITY_TYPES, Focus, PROGRAMS, doneActivities, programIndex, resolveExercise } from './workout';
 
 /* ===================== Kaslar ===================== */
 export type Muscle =
@@ -81,6 +81,9 @@ export function dayVolume(data: Data, key: string): Record<Muscle, number> {
     const map = x && MAP[x.n];
     if (!map || !n) continue;
     for (const [m, w] of Object.entries(map.m) as [Muscle, number][]) out[m] += n * w * (map.f ?? 1);
+  }
+  for (const a of doneActivities(data, key)) {
+    for (const [m, w] of Object.entries(ACTIVITY_TYPES[a.type].muscles)) if (m in out) out[m as Muscle] += w;
   }
   return out;
 }

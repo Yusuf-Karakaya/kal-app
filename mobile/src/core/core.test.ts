@@ -296,7 +296,7 @@ import { PROGRAM, burnedKcal, dayProgress, programFor, toggleSet, waterGoalOn, w
 test('antrenman: set işaretleme, ilerleme ve su bonusu', () => {
   const monday = '2026-11-09'; // Pazartesi
   assert.equal(programFor(monday).k, 'PZT');
-  let d = structuredClone(DEFAULT_DATA);
+  let d = { ...structuredClone(DEFAULT_DATA), activities: [] }; // aktivitesiz temel program
   assert.equal(waterGoalOn(d, monday), d.goals.water);
   d = toggleSet(d, monday, '0-0', 0);
   d = toggleSet(d, monday, '0-0', 1);
@@ -419,4 +419,46 @@ test('ölçüden sonraki kilo değişimi yağ oranına ve çizime yansır', () =
   assert.equal(composition(d).source, 'navy');
   // çizim genişliği yağ oranıyla değişir
   assert.ok(figureScale(c1.bodyFat).body < figureScale(c0.bodyFat).body);
+});
+
+/* ---------- dış aktiviteler (basketbol) ---------- */
+import { activityKcal, toggleActivity } from './index';
+
+test('basketbol: önceki gün plana göre, o gün ve sonraki gün tike göre düzenlenir', () => {
+  const mon = '2026-11-09', tue = '2026-11-10', wed = '2026-11-11', sat = '2026-11-14';
+  let d = structuredClone(DEFAULT_DATA); // varsayılan: Salı basketbol 90 dk
+  d.profile = { ...d.profile, weight: 80 };
+  const names = (k: string, dd = d) => programFor(k, dd).blocks!.flatMap((b) => b.ex.filter((x) => !x.skip).map((x) => x.n));
+
+  // Dengeli program, Pazartesi: bacak yarıya, swing atlanır (tik beklenmez, plan yeterli)
+  const monP = programFor(mon, d);
+  assert.ok(monP.notes![0].includes('Ertesi gün'));
+  assert.ok(!names(mon).includes('Tek Kol Swing'));
+  assert.equal(monP.blocks![0].ex[0].s, 2); // goblet squat 4 → 2
+
+  // Tiklenmeden Salı ve Çarşamba normal
+  assert.equal(programFor(tue, d).optional, undefined);
+  assert.ok(!(programFor(wed, d).notes?.length));
+  assert.equal(activityKcal(d, tue), 0);
+
+  // Tiklenince: Salı kısa/isteğe bağlı, Çarşamba toparlanma
+  d = toggleActivity(d, tue, 'basketbol');
+  const tueP = programFor(tue, d);
+  assert.equal(tueP.optional, true);
+  const wedP = programFor(wed, d);
+  assert.ok(wedP.blocks!.some((b) => b.t.includes('toparlanma')));
+  assert.ok(!names(wed).includes('Goblet Squat Bekleme'));
+  assert.ok(activityKcal(d, tue) > 500 && activityKcal(d, tue) < 900, `kcal ${activityKcal(d, tue)}`);
+  assert.equal(waterGoalOn(d, tue), d.goals.water + 550);
+  assert.ok(dayVolume(d, tue).calves >= 2);
+
+  // Üst vücut programı: o hafta basketbol yapıldıysa Cumartesi bacak koruma squat'ı atlanır
+  const up = { ...d, programFocus: 'upper' as const };
+  assert.ok(!names(sat, up).includes('Goblet Squat (hafif)'));
+  const upNoBall = toggleActivity(up, tue, 'basketbol');
+  assert.ok(names(sat, upNoBall).includes('Goblet Squat (hafif)'));
+
+  // Tik geri alınınca her şey eski haline döner
+  d = toggleActivity(d, tue, 'basketbol');
+  assert.equal(programFor(tue, d).optional, undefined);
 });

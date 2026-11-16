@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Share, Switch, Text, View } from 'react-native';
-import { Data, Profile, Reminders, calcGoals, fmt, isTime, migrate, setWeight, todayKey } from '../data';
+import { Alert, Share, StyleSheet, Switch, Text, View } from 'react-native';
+import { ACTIVITY_TYPES, Activity, Data, Profile, Reminders, calcGoals, fmt, isTime, migrate, setWeight, todayKey } from '../data';
 import { Btn, Card, Input, Segmented, styles as ui, useTheme } from '../ui';
 
 interface Props {
@@ -23,6 +23,7 @@ const GOALS = [
   { value: 0, label: 'Koru' },
   { value: 300, label: 'Kilo al' },
 ];
+const DAYS = ['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'];
 const INTERVALS = [
   { value: 30, label: '30 dk' },
   { value: 60, label: '1 sa' },
@@ -44,11 +45,14 @@ export default function SettingsScreen({ data, permission, onSave, onRequestPerm
   const [r, setR] = useState<Reminders>(data.reminders);
   const [hint, setHint] = useState('');
   const [importText, setImportText] = useState('');
+  const [acts, setActs] = useState<Activity[]>(data.activities ?? []);
+  const setAct = (i: number, patch: Partial<Activity>) => setActs((list) => list.map((a, j) => (j === i ? { ...a, ...patch } : a)));
 
   useEffect(() => {
     setP(data.profile);
     setR(data.reminders);
     setNum(toNums(data));
+    setActs(data.activities ?? []);
   }, [data]);
 
   const n = (k: NumKey) => Number(num[k].replace(',', '.'));
@@ -134,6 +138,39 @@ export default function SettingsScreen({ data, permission, onSave, onRequestPerm
         </Text>
         {hint ? <Text style={{ color: c.muted, fontSize: 13 }}>{hint}</Text> : null}
         <Btn label="Kaydet" onPress={saveProfile} />
+      </Card>
+
+      <Card title="Düzenli aktiviteler">
+        <Text style={{ color: c.muted, fontSize: 13 }}>
+          Basketbol, futbol, koşu gibi her hafta yaptığın aktiviteler. O gün Antrenman sekmesinde "gittim" diye işaretlersin; bacakları yoran aktivitelerde önceki gün bacak hacmi azalır, ertesi gün toparlanma eklenir.
+        </Text>
+        {acts.map((a, i) => (
+          <View key={a.id} style={{ gap: 8, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.line }}>
+            <View style={ui.row}>
+              <Input value={a.name} onChangeText={(t) => setAct(i, { name: t })} placeholder="ör. Basketbol antrenmanı" style={{ flex: 1 }} />
+              <Btn kind="danger" label="Sil" onPress={() => setActs((list) => list.filter((_, j) => j !== i))} />
+            </View>
+            <View style={ui.chips}>
+              {(Object.keys(ACTIVITY_TYPES) as Activity['type'][]).map((t) => (
+                <Btn key={t} kind={a.type === t ? 'primary' : 'ghost'} label={`${ACTIVITY_TYPES[t].icon} ${ACTIVITY_TYPES[t].label}`} onPress={() => setAct(i, { type: t })} />
+              ))}
+            </View>
+            <Segmented options={DAYS.map((d, di) => ({ value: di, label: d }))} value={a.day} onChange={(v) => setAct(i, { day: v })} />
+            <View style={ui.row}>
+              <Input value={String(a.minutes)} onChangeText={(t) => setAct(i, { minutes: Number(t) || 0 })} keyboardType="number-pad" style={{ width: 90 }} />
+              <Text style={{ color: c.muted, alignSelf: 'center' }}>dakika</Text>
+            </View>
+          </View>
+        ))}
+        <View style={ui.row}>
+          <Btn kind="ghost" label="+ Aktivite ekle" style={{ flex: 1 }}
+            onPress={() => setActs((list) => [...list, { id: 'a' + Date.now().toString(36), name: 'Basketbol antrenmanı', type: 'basketball', day: 1, minutes: 90 }])} />
+          <Btn label="Kaydet" style={{ flex: 1 }}
+            onPress={() => onSave({
+              ...data,
+              activities: acts.map((a) => ({ ...a, name: a.name.trim() || ACTIVITY_TYPES[a.type].label, minutes: Math.max(10, Math.min(300, a.minutes || 60)) })),
+            }, 'Aktiviteler kaydedildi')} />
+        </View>
       </Card>
 
       <Card title="Hatırlatmalar">

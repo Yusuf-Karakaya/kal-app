@@ -1,5 +1,5 @@
 // Kettlebell Haftası programı ve antrenman takibi (önceki "Kettlebell Haftası" uygulamasından taşındı)
-import { Data, addDays, keyToDate } from './model';
+import { Activity, Data, addDays, keyToDate } from './model';
 
 export interface Exercise {
   n: string;
@@ -12,6 +12,8 @@ export interface Exercise {
   /** kettlebell kullanılıyor mu (0 = vücut ağırlığı) */
   kg: number;
   tip: string;
+  /** Aktivite nedeniyle bu gün atlanır (ör. basketbol öncesi/sonrası bacak hareketi) */
+  skip?: boolean;
 }
 export interface Block { t: string; ex: Exercise[] }
 export interface WorkoutDay {
@@ -24,6 +26,10 @@ export interface WorkoutDay {
   /** Aktif dinlenme (hafif) */
   light?: boolean;
   blocks?: Block[];
+  /** Aktiviteye göre yapılan düzenlemelerin açıklaması */
+  notes?: string[];
+  /** Kettlebell bu gün isteğe bağlı (aynı gün aktivite yapıldı) */
+  optional?: boolean;
 }
 
 export const PROGRAM: WorkoutDay[] = [
@@ -181,6 +187,7 @@ const VIDEO: Record<string, string> = {
   'Overhead Triceps Extension': 'kettlebell overhead triceps extension', 'Kettlebell High Pull': 'kettlebell high pull',
   'Kettlebell Curl': 'kettlebell bicep curl', 'Close-grip Push-up': 'close grip push up',
   'Clean → Press → Push-up': 'kettlebell clean press push up complex', 'Goblet Squat (hafif)': 'kettlebell goblet squat form',
+  'Baldır esnetme': 'calf stretch wall soleus', 'Kalça fleksör esnetme': 'hip flexor stretch half kneeling', 'Ayak bileği mobilitesi': 'ankle mobility knee to wall',
 };
 
 /** Hareketin YouTube Shorts aramasının adresi */
@@ -199,7 +206,11 @@ export const PROGRESSION_NOTES = [
 /** Tarihin programdaki günü (Pazartesi = 0) */
 export const programIndex = (key: string) => (keyToDate(key).getDay() + 6) % 7;
 /** Tarihe denk gelen program günü (veri verilirse seçili program odağına göre) */
-export const programFor = (key: string, data?: Pick<Data, 'programFocus'>) => programOf(data)[programIndex(key)];
+/** Tarihe denk gelen program günü; veri verilirse program odağı ve aktivitelere göre düzenlenir */
+export function programFor(key: string, data?: Pick<Data, 'programFocus'> & Partial<Pick<Data, 'activities' | 'activityLog'>>): WorkoutDay {
+  const base = programOf(data)[programIndex(key)];
+  return data && data.activities?.length ? adjustForActivities(data as Data, key, base) : base;
+}
 /** Set anahtarı. Üst vücut programının setleri "u" önekiyle saklanır; böylece program değişince eski kayıtlar karışmaz. */
 export const exKey = (bi: number, ei: number, data?: Pick<Data, 'programFocus'>) => `${focusOf(data) === 'upper' ? 'u' : ''}${bi}-${ei}`;
 
@@ -221,24 +232,146 @@ export function dayProgress(data: Data, key: string) {
   const sets = data.workouts?.[key] ?? {};
   let total = 0, done = 0;
   (p.blocks ?? []).forEach((b, bi) => b.ex.forEach((x, ei) => {
+    if (x.skip) return;
     total += x.s;
-    done += (sets[exKey(bi, ei, data)] ?? []).filter(Boolean).length;
+    done += Math.min(x.s, (sets[exKey(bi, ei, data)] ?? []).filter(Boolean).length);
   }));
   return { total, done, ratio: total ? done / total : 0 };
+}
+
+
+/* ===================== Dış aktiviteler (basketbol vb.) ===================== */
+export interface ActivityType {
+  label: string;
+  icon: string;
+  /** Compendium of Physical Activities MET değeri */
+  met: number;
+  /** Bacakları ve sıçramayı yoğun kullanıyor mu (önceki/sonraki gün düzenlemesi için) */
+  legLoad: boolean;
+  /** Kas haritasına katkı (yaklaşık etkili set) */
+  muscles: Record<string, number>;
+}
+
+export const ACTIVITY_TYPES: Record<Activity['type'], ActivityType> = {
+  basketball: { label: 'Basketbol', icon: '🏀', met: 6.5, legLoad: true, muscles: { calves: 2, quads: 1, hamstrings: 1, glutes: 1 } },
+  football: { label: 'Futbol', icon: '⚽', met: 7, legLoad: true, muscles: { calves: 1.5, quads: 1.5, hamstrings: 1.5, adductors: 1 } },
+  running: { label: 'Koşu', icon: '🏃', met: 8.3, legLoad: true, muscles: { calves: 2, quads: 1, hamstrings: 1 } },
+  cycling: { label: 'Bisiklet', icon: '🚴', met: 6.8, legLoad: true, muscles: { quads: 2, glutes: 1, calves: 1 } },
+  swimming: { label: 'Yüzme', icon: '🏊', met: 6, legLoad: false, muscles: { upperback: 2, shoulders: 2, chest: 1, triceps: 1 } },
+  other: { label: 'Diğer', icon: '⭐', met: 5, legLoad: false, muscles: {} },
+};
+
+/** O güne planlanmış aktiviteler */
+export function activitiesOn(data: Pick<Data, 'activities'>, key: string): Activity[] {
+  const idx = programIndex(key);
+  return (data.activities ?? []).filter((a) => a.day === idx);
+}
+export const activityDone = (data: Pick<Data, 'activityLog'>, key: string, id: string) => !!data.activityLog?.[key]?.[id];
+export function toggleActivity(data: Data, key: string, id: string): Data {
+  const day = { ...(data.activityLog?.[key] ?? {}) };
+  day[id] = !day[id];
+  return { ...data, activityLog: { ...(data.activityLog ?? {}), [key]: day } };
+}
+/** O gün yapılan (tiklenen) aktiviteler */
+export const doneActivities = (data: Data, key: string) => activitiesOn(data, key).filter((a) => activityDone(data, key, a.id));
+
+/** Aktivitelerde yakılan tahmini kalori */
+export function activityKcal(data: Data, key: string): number {
+  return Math.round(doneActivities(data, key)
+    .reduce((s, a) => s + (ACTIVITY_TYPES[a.type].met * 3.5 * data.profile.weight / 200) * a.minutes, 0));
+}
+
+/** Bacak ağırlıklı hareketler (squat, RDL, köprü, thruster) */
+const LEG_PRIMARY = new Set([
+  'Tempolu Goblet Squat', 'Tek Bacak RDL', 'Bulgarian Split Squat', 'Cossack Squat', 'Tek Bacak Glute Bridge',
+  'Goblet Thruster', 'Goblet Squat (hafif)', 'Goblet Squat Bekleme',
+]);
+/** Sıçramalı / patlayıcı, bacakları yoran hareketler */
+const BALLISTIC = new Set(['Tek Kol Swing', 'Swing EMOM', 'Swing → Clean → Press → Squat', 'Kettlebell Snatch', 'Burpee']);
+
+const RECOVERY_BLOCK: Block = {
+  t: 'Basketbol sonrası toparlanma',
+  ex: [
+    { n: 'Baldır esnetme', s: 2, r: '45 sn / bacak', rest: 15, kg: 0, tip: 'Duvara yaslan, arka bacak düz, topuk yerde. Ardından dizi hafif bükerek tekrarla (soleus).' },
+    { n: 'Kalça fleksör esnetme', s: 2, r: '45 sn / taraf', rest: 15, kg: 0, tip: 'Yarım diz çök, kalçayı sık ve öne it; beli büzme.' },
+    { n: 'Ayak bileği mobilitesi', s: 2, r: '10 / yön', rest: 15, kg: 0, tip: 'Ayak bileğini iki yöne yavaş çevir, sonra dizi parmak ucuna doğru it (diz-duvar testi).' },
+  ],
+};
+
+const legActs = (data: Data, key: string) => activitiesOn(data, key).filter((a) => ACTIVITY_TYPES[a.type].legLoad);
+
+/**
+ * Aktiviteye göre günü düzenler. Hareketler silinmez, "skip" ile işaretlenir ya da seti azaltılır;
+ * böylece saklanan set anahtarları (blok-hareket) değişmez.
+ * - Önceki gün (planlı aktivite): bacak hareketleri yarıya, sıçramalı hareketler atlanır.
+ * - Aktivite günü (tiklendiyse): kettlebell kısa ve isteğe bağlı, bacak/sıçrama yok.
+ * - Sonraki gün (tiklendiyse): bacak/sıçrama yok, toparlanma hareketleri eklenir.
+ * - Hafta içinde aktivite yapıldıysa: üst vücut programındaki "bacak koruma" squat'ı atlanır.
+ */
+export function adjustForActivities(data: Data, key: string, base: WorkoutDay): WorkoutDay {
+  if (base.rest || !base.blocks) return base;
+  const tomorrow = legActs(data, addDays(key, 1));
+  const today = legActs(data, key).filter((a) => activityDone(data, key, a.id));
+  const yesterdayKey = addDays(key, -1);
+  const yesterday = legActs(data, yesterdayKey).filter((a) => activityDone(data, yesterdayKey, a.id));
+  const monday = addDays(key, -programIndex(key));
+  let doneThisWeek = false;
+  for (let k = monday; k < key; k = addDays(k, 1)) if (legActs(data, k).some((a) => activityDone(data, k, a.id))) doneThisWeek = true;
+  if (!tomorrow.length && !today.length && !yesterday.length && !doneThisWeek) return base;
+
+  const day: WorkoutDay = JSON.parse(JSON.stringify(base));
+  const notes: string[] = [];
+  const name = (list: Activity[]) => list.map((a) => a.name.toLocaleLowerCase('tr-TR')).join(', ');
+  const each = (fn: (x: Exercise) => void) => day.blocks!.forEach((b) => b.ex.forEach(fn));
+
+  if (today.length) {
+    each((x) => {
+      if (LEG_PRIMARY.has(x.n) || BALLISTIC.has(x.n)) x.skip = true;
+      else x.s = Math.max(2, x.s - 1);
+    });
+    day.optional = true;
+    notes.push(`O gün ${name(today)} yapıldı: kettlebell isteğe bağlı, kısa ve sadece üst vücut. Bacak ve sıçrama hareketleri çıkarıldı.`);
+  } else if (yesterday.length) {
+    each((x) => { if (LEG_PRIMARY.has(x.n) || BALLISTIC.has(x.n)) x.skip = true; });
+    day.blocks!.push(JSON.parse(JSON.stringify(RECOVERY_BLOCK)));
+    notes.push(`Bir önceki gün ${name(yesterday)} yapıldı: bacak ve sıçrama hareketleri çıkarıldı, toparlanma hareketleri eklendi.`);
+  } else if (tomorrow.length) {
+    each((x) => {
+      if (BALLISTIC.has(x.n)) x.skip = true;
+      else if (LEG_PRIMARY.has(x.n)) x.s = Math.max(2, Math.ceil(x.s / 2));
+    });
+    if (notes.length === 0 && day.blocks!.some((b) => b.ex.some((x) => x.skip || LEG_PRIMARY.has(x.n)))) {
+      notes.push(`Ertesi gün ${name(tomorrow)} var: bacakları dinç tutmak için bacak hacmi azaltıldı, sıçramalı hareketler çıkarıldı.`);
+    } else {
+      notes.push(`Ertesi gün ${name(tomorrow)} var: bu günün programı zaten bacakları yormuyor.`);
+    }
+  }
+  if (doneThisWeek && focusOf(data) === 'upper') {
+    let changed = false;
+    each((x) => { if (x.n === 'Goblet Squat (hafif)' && !x.skip) { x.skip = true; changed = true; } });
+    if (changed) notes.push('Bu hafta basketbol bacaklarını yeterince çalıştırdı: bacak koruma squat’ı atlandı.');
+  }
+  day.notes = notes;
+  return day;
 }
 
 /** Haftanın (Pazartesi–Pazar) set ilerlemesi */
 export function weekProgress(data: Data, key: string) {
   const monday = addDays(key, -programIndex(key));
-  let total = 0, done = 0, sessions = 0;
+  let total = 0, done = 0, sessions = 0, activityPlanned = 0, activityDoneCount = 0;
   for (let i = 0; i < 7; i++) {
     const k = addDays(monday, i);
     const d = dayProgress(data, k);
     total += d.total;
     done += d.done;
     if (isTrainingDay(k, data) && d.ratio >= 0.5) sessions++;
+    activityPlanned += activitiesOn(data, k).length;
+    activityDoneCount += activitiesOn(data, k).filter((a) => activityDone(data, k, a.id)).length;
   }
-  return { total, done, ratio: total ? done / total : 0, sessions, planned: programOf(data).filter((p) => !p.rest && !p.light).length, monday };
+  return {
+    total, done, ratio: total ? done / total : 0, sessions, planned: programOf(data).filter((p) => !p.rest && !p.light).length, monday,
+    activityPlanned, activityDone: activityDoneCount,
+  };
 }
 
 export function toggleSet(data: Data, key: string, ek: string, si: number): Data {
@@ -282,5 +415,8 @@ export function burnedKcal(data: Data, key: string): number {
 export const WORKOUT_WATER_BONUS = 500;
 export function waterGoalOn(data: Data, key: string): number {
   const started = dayProgress(data, key).done > 0;
-  return data.goals.water + (started && !programFor(key, data).rest ? WORKOUT_WATER_BONUS : 0);
+  const kb = started && !programFor(key, data).rest ? WORKOUT_WATER_BONUS : 0;
+  // Dış aktivite: dakika başına ~6 ml (90 dk basketbol ≈ +550 ml)
+  const act = Math.round(doneActivities(data, key).reduce((s, a) => s + a.minutes * 6, 0) / 50) * 50;
+  return data.goals.water + Math.min(1000, kb + act);
 }

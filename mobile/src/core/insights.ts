@@ -3,7 +3,7 @@ import { FOODS, Food } from './foods';
 import {
   Data, FoodEntry, Meal, Totals, addDays, daysBetween, fmt, fmt1, keyToDate, minutesOf, todayKey, totals,
 } from './model';
-import { burnedKcal, dayProgress, isTrainingDay, programFor, waterGoalOn } from './workout';
+import { ACTIVITY_TYPES, activitiesOn, activityDone, activityKcal, burnedKcal, dayProgress, isTrainingDay, programFor, waterGoalOn } from './workout';
 
 /* ---------- kilo trendi ---------- */
 export interface TrendPoint { key: string; raw?: number; trend: number }
@@ -193,6 +193,16 @@ export function dailyInsights(data: Data, key: string, now = new Date()): Insigh
     out.push({ tone: 'good', text: `${prog.name} tamamlandı, ~${fmt(burnedKcal(data, key))} kcal yaktın. Protein ve suyu ihmal etme.` });
   } else if (isToday && isTrainingDay(key, data) && wp.done === 0 && hour >= 16) {
     out.push({ tone: 'info', text: `Bugün ${prog.name.toLocaleLowerCase('tr-TR')} günü. Antrenman sekmesinden başlayabilirsin.` });
+  }
+
+  // Dış aktiviteler (basketbol vb.)
+  for (const a of activitiesOn(data, key)) {
+    const ty = ACTIVITY_TYPES[a.type];
+    if (activityDone(data, key, a.id)) {
+      out.push({ tone: 'good', text: `${ty.icon} ${a.name}: ~${fmt(activityKcal(data, key))} kcal yaktın.${ty.legLoad ? ' Yarın toparlanma odaklı çalış.' : ''}` });
+    } else if (isToday && hour >= 18) {
+      out.push({ tone: 'info', text: `${ty.icon} Bugün ${a.name.toLocaleLowerCase('tr-TR')} vardı. Gittiysen Antrenman sekmesinde işaretle.` });
+    }
   }
 
   // Su

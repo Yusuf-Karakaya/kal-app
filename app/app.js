@@ -452,6 +452,7 @@ function renderSettings() {
   $('#rWeighOn').checked = !!r.weighOn; $('#rWeigh').value = r.weigh || '08:00';
   renderNotifStatus();
   renderLockSettings();
+  renderActivitiesSettings();
 }
 
 function updateMacroSum() {
@@ -618,7 +619,8 @@ function renderWorkout() {
   const kb = data.kbWeight ?? 12;
   const week = K.weekProgress(data, wkKey);
   const focus = data.programFocus || 'balanced';
-  $('#wkSub').textContent = `Tek ${kb} kg kettlebell · ${K.FOCUS_LABEL[focus].toLocaleLowerCase('tr-TR')} · bu hafta ${week.sessions}/${week.planned} antrenman`;
+  $('#wkSub').textContent = `Tek ${kb} kg kettlebell · ${K.FOCUS_LABEL[focus].toLocaleLowerCase('tr-TR')} · bu hafta ${week.sessions}/${week.planned} antrenman`
+    + (week.activityPlanned ? ` · ${week.activityDone}/${week.activityPlanned} aktivite` : '');
   $$('#wkFocus button').forEach((b) => { b.classList.toggle('on', b.dataset.focus === focus); b.setAttribute('aria-pressed', String(b.dataset.focus === focus)); });
   $('#wkPct').textContent = `${Math.round(week.ratio * 100)}%`;
   $('#wkNext').disabled = K.addDays(week.monday, 7) > K.todayKey();
@@ -627,7 +629,9 @@ function renderWorkout() {
   $('#wkRail').innerHTML = K.programOf(data).map((p, i) => {
     const key = K.addDays(week.monday, i);
     const c = K.dayProgress(data, key);
-    return `<button type="button" class="wday${key === tk ? ' today' : ''}" data-wk="${key}" aria-pressed="${key === wkKey}">${p.k}
+    const acts = K.activitiesOn(data, key);
+    const actIcon = acts.map((a) => `<span class="wact${K.activityDone(data, key, a.id) ? ' done' : ''}" title="${esc(a.name)}">${K.ACTIVITY_TYPES[a.type].icon}</span>`).join('');
+    return `<button type="button" class="wday${key === tk ? ' today' : ''}" data-wk="${key}" aria-pressed="${key === wkKey}">${p.k}${actIcon}
       <small>${p.rest ? '—' : c.total + ' set'}</small><span class="wbar"><i style="width:${c.ratio * 100}%"></i></span></button>`;
   }).join('');
 
@@ -637,6 +641,23 @@ function renderWorkout() {
   const burn = K.burnedKcal(data, wkKey);
   let h = `<div class="wk-dayhead"><div><h3>${esc(p.name)}</h3><span class="focus">${esc(p.focus)} · ${dateTxt}</span><p>${esc(p.intro)}</p></div>
     ${p.rest ? '' : `<div class="wk-ring">${wkRing(c.ratio)}<span>${c.done}/${c.total} set</span>${burn ? `<div class="wk-burn">~${fmt(burn)} kcal</div>` : ''}</div>`}</div>`;
+  // Dış aktiviteler: tikli düğme
+  for (const a of K.activitiesOn(data, wkKey)) {
+    const ty = K.ACTIVITY_TYPES[a.type];
+    const done = K.activityDone(data, wkKey, a.id);
+    const future = wkKey > K.todayKey();
+    const kcal = done ? K.activityKcal(data, wkKey) : Math.round(ty.met * 3.5 * data.profile.weight / 200 * a.minutes);
+    const sub = done ? `gittin, ~${fmt(kcal)} kcal yaktın` : future ? `planlı · o gün gelince işaretle` : `gittiysen işaretle (~${fmt(kcal)} kcal)`;
+    h += `<label class="act-card${done ? ' done' : ''}${future ? ' future' : ''}">
+      <input type="checkbox" class="act-check" data-act="${esc(a.id)}" ${done ? 'checked' : ''} ${future ? 'disabled' : ''} />
+      <span class="act-box" aria-hidden="true">✓</span>
+      <span class="act-text"><b>${ty.icon} ${esc(a.name)}</b><small>${a.minutes} dk · ${sub}</small></span>
+    </label>`;
+  }
+  if (p.notes && p.notes.length) {
+    h += p.notes.map((n) => `<div class="insight info wk-note">${esc(n)}</div>`).join('');
+  }
+  if (p.optional) h += '<p class="hint wk-optional">Kettlebell bugün isteğe bağlı. Yaparsan 20–25 dakikada bitir.</p>';
   if (p.rest) {
     const g = data.goals;
     h += `<div class="rest-card"><h3>Bugün dinlen</h3><p>7–9 saat uyku · ${fmt(g.p)} g protein hedefin · ${fmt(g.water)} ml su</p></div>`;
@@ -644,9 +665,12 @@ function renderWorkout() {
     return;
   }
   const sets = (data.workouts && data.workouts[wkKey]) || {};
+  const skipped = p.blocks.flatMap((b) => b.ex.filter((x) => x.skip).map((x) => x.n));
   p.blocks.forEach((b, bi) => {
+    if (b.ex.every((x) => x.skip)) return;
     h += `<div class="block-t">${esc(b.t)}</div><div class="ex-list">`;
     b.ex.forEach((x, ei) => {
+      if (x.skip) return;
       const ek = K.exKey(bi, ei, data);
       const arr = sets[ek] || [];
       const all = arr.filter(Boolean).length === x.s;
@@ -660,6 +684,7 @@ function renderWorkout() {
     });
     h += '</div>';
   });
+  if (skipped.length) h += `<p class="hint wk-skipped">Bugün atlanan: ${skipped.map(esc).join(', ')}</p>`;
   h += '<div class="wk-foot"><button type="button" class="btn ghost small" id="wkReset">Günü sıfırla</button></div>';
   $('#wkView').innerHTML = h;
 }
@@ -725,11 +750,19 @@ function bindWorkout() {
     wkKey = k > K.todayKey() ? K.todayKey() : k;
     renderWorkout();
   };
+  $('#wkView').addEventListener('change', (e) => {
+    const cb = e.target.closest('[data-act]');
+    if (!cb) return;
+    const a = (data.activities || []).find((x) => x.id === cb.dataset.act);
+    const next = K.toggleActivity(data, wkKey, cb.dataset.act);
+    commit(next, K.activityDone(next, wkKey, cb.dataset.act) ? `${a ? a.name : 'Aktivite'} işaretlendi; program buna göre düzenlendi` : 'İşaret kaldırıldı');
+  });
   $('#wkView').onclick = async (e) => {
     const setBtn = e.target.closest('[data-ek]');
     if (setBtn) {
       const ek = setBtn.dataset.ek, si = Number(setBtn.dataset.si);
-      const x = K.resolveExercise(wkKey, ek);
+      const [bi, ei] = ek.replace(/^u/, '').split('-').map(Number);
+      const x = K.programFor(wkKey, data).blocks[bi].ex[ei];
       const wasOn = !!(((data.workouts || {})[wkKey] || {})[ek] || [])[si];
       commit(K.toggleSet(data, wkKey, ek, si));
       if (!wasOn && x.rest && wkKey === K.todayKey()) startTimer(x.rest, x.n, si + 1, x.s);
@@ -882,6 +915,53 @@ function bindBody() {
     if (!Object.values(m).some(Boolean)) { toast('En az bir ölçü gir'); return; }
     if (m.waist && m.neck && m.neck >= m.waist) { toast('Boyun ölçüsü belden küçük olmalı'); return; }
     commit(K.setMeasure(data, K.todayKey(), m), 'Ölçüler kaydedildi');
+  };
+}
+
+
+/* ================== Ayarlar: düzenli aktiviteler ================== */
+const DAY_NAMES = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+let actDraft = [];
+
+function renderActivitiesSettings() {
+  actDraft = JSON.parse(JSON.stringify(data.activities || []));
+  drawActDraft();
+}
+function drawActDraft() {
+  const types = Object.entries(K.ACTIVITY_TYPES);
+  $('#actList').innerHTML = actDraft.length ? actDraft.map((a, i) => `
+    <div class="act-row" data-i="${i}">
+      <input type="text" data-f="name" value="${esc(a.name)}" aria-label="Aktivite adı" placeholder="ör. Basketbol antrenmanı" />
+      <select data-f="type" aria-label="Tür">${types.map(([k, t]) => `<option value="${k}" ${k === a.type ? 'selected' : ''}>${t.icon} ${t.label}</option>`).join('')}</select>
+      <select data-f="day" aria-label="Gün">${DAY_NAMES.map((d, di) => `<option value="${di}" ${di === a.day ? 'selected' : ''}>${d}</option>`).join('')}</select>
+      <label class="act-min"><input type="number" data-f="minutes" value="${a.minutes}" min="10" max="300" step="5" inputmode="numeric" aria-label="Süre (dakika)" /> dk</label>
+      <button type="button" class="del" data-del="${i}" aria-label="Sil">✕</button>
+    </div>`).join('') : '<p class="hint">Henüz aktivite yok.</p>';
+}
+
+function bindActivitiesSettings() {
+  $('#actList').addEventListener('input', (e) => {
+    const row = e.target.closest('[data-i]');
+    const f = e.target.dataset.f;
+    if (!row || !f) return;
+    const a = actDraft[Number(row.dataset.i)];
+    a[f] = f === 'day' || f === 'minutes' ? Number(e.target.value) : e.target.value;
+  });
+  $('#actList').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-del]');
+    if (!b) return;
+    actDraft.splice(Number(b.dataset.del), 1);
+    drawActDraft();
+  });
+  $('#actAdd').onclick = () => {
+    actDraft.push({ id: 'a' + Date.now().toString(36), name: 'Basketbol antrenmanı', type: 'basketball', day: 1, minutes: 90 });
+    drawActDraft();
+  };
+  $('#actSave').onclick = () => {
+    const clean = actDraft
+      .map((a) => ({ ...a, name: String(a.name || '').trim() || K.ACTIVITY_TYPES[a.type].label, minutes: Math.max(10, Math.min(300, Number(a.minutes) || 60)) }));
+    commit({ ...data, activities: clean }, 'Aktiviteler kaydedildi; program buna göre düzenlenecek');
+    renderActivitiesSettings();
   };
 }
 
@@ -1259,6 +1339,7 @@ async function init() {
   bindEvents();
   bindWorkout();
   bindBody();
+  bindActivitiesSettings();
   renderDrinks();
   render();
 

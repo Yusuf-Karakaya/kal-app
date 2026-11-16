@@ -72,6 +72,16 @@ kalori, protein, karbonhidrat ve yağı hesaplar.
     korunur (büyümez). Bacak kalınlaşsın istemeyen ama üst vücudu geliştirmek isteyenler için.
     Bacaklar toplam yağ oranı düştükçe incelir; bölgesel yağ yakmak mümkün değildir.
   - Program değişince önceki kayıtlar silinmez; kas haritası her iki programın setlerini de sayar.
+- **Düzenli aktiviteler (ör. Salı basketbol antrenmanı):** Ayarlar → Düzenli aktiviteler'den ad, tür (basketbol,
+  futbol, koşu, bisiklet, yüzme, diğer), gün ve süre düzenlenir. O gün Antrenman sekmesinde tikli kutuyla
+  "gittim" işaretlenir; işaretlenmezse hiçbir şey değişmez. Bacakları yoran aktivitelerde:
+  - *Önceki gün* (plana göre): bacak hareketleri yarıya iner, sıçramalı hareketler (swing, snatch, burpee) çıkar.
+  - *Aktivite günü* (işaretlenince): kettlebell isteğe bağlı, kısa ve sadece üst vücut.
+  - *Sonraki gün* (işaretlenince): bacak/sıçrama hareketleri çıkar, baldır, kalça fleksörü ve ayak bileği için
+    toparlanma hareketleri eklenir.
+  - O hafta yapıldıysa üst vücut programındaki bacak koruma squat'ı atlanır.
+  - Yakılan kalori (MET), su hedefi (+dakika başına ~6 ml) ve kas haritası aktiviteyi de hesaba katar.
+  Henüz gelmemiş bir günün aktivitesi işaretlenemez.
 
 ### Vücut: kas haritası ve vücut prototipi (Vücut sekmesi)
 - **Hangi kasları geliştiriyorsun:** her kettlebell hareketi çalıştırdığı kaslara eşlenir (ana kas 1,

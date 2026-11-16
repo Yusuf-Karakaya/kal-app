@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Linking, Pressable, StyleSheet, Text, Vibration, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import {
-  Data, FOCUS_LABEL, Focus, PROGRESSION_NOTES, addDays, burnedKcal, dayProgress, exKey, fmt, keyToDate, programFor, programOf,
-  resetWorkoutDay, todayKey, toggleSet, videoUrl, weekProgress,
+  ACTIVITY_TYPES, Data, FOCUS_LABEL, Focus, PROGRESSION_NOTES, activitiesOn, activityDone, activityKcal, addDays, burnedKcal,
+  dayProgress, exKey, fmt, keyToDate, programFor, programOf, resetWorkoutDay, todayKey, toggleActivity, toggleSet, videoUrl, weekProgress,
 } from '../data';
 import { Card, Segmented, styles as ui, useTheme } from '../ui';
 
@@ -47,6 +47,7 @@ export default function WorkoutScreen({ data, commit, startTimer }: Props) {
           <Text style={[s.title, { color: c.text }]}>Kettlebell Haftası</Text>
           <Text style={{ color: c.muted, fontSize: 13 }}>
             Tek {kb} kg kettlebell · {FOCUS_LABEL[focus].toLocaleLowerCase('tr-TR')} · bu hafta {week.sessions}/{week.planned} antrenman
+            {week.activityPlanned ? ` · ${week.activityDone}/${week.activityPlanned} aktivite` : ''}
           </Text>
         </View>
         <View style={s.weekNav}>
@@ -79,6 +80,9 @@ export default function WorkoutScreen({ data, commit, startTimer }: Props) {
             <Pressable key={d.k} onPress={() => setKey(k)} style={[s.day, { borderColor: on ? c.text : c.line, backgroundColor: on ? c.text : c.card }]}
               accessibilityState={{ selected: on }}>
               {k === tk && <View style={[s.todayDot, { backgroundColor: c.warn }]} />}
+              {activitiesOn(data, k).map((a) => (
+                <Text key={a.id} style={[s.actBadge, { opacity: activityDone(data, k, a.id) ? 1 : 0.5 }]}>{ACTIVITY_TYPES[a.type].icon}</Text>
+              ))}
               <Text style={{ color: on ? c.bg : c.text, fontWeight: '800', fontSize: 13 }}>{d.k}</Text>
               <Text style={{ color: on ? c.bg : c.muted, fontSize: 9 }}>{d.rest ? '—' : `${dp.total} set`}</Text>
               <View style={[s.dayBar, { backgroundColor: c.line }]}>
@@ -106,6 +110,42 @@ export default function WorkoutScreen({ data, commit, startTimer }: Props) {
         )}
       </View>
 
+      {activitiesOn(data, key).map((a) => {
+        const ty = ACTIVITY_TYPES[a.type];
+        const done = activityDone(data, key, a.id);
+        const future = key > tk;
+        const kcal = done ? activityKcal(data, key) : Math.round((ty.met * 3.5 * data.profile.weight) / 200 * a.minutes);
+        return (
+          <Pressable
+            key={a.id}
+            disabled={future}
+            onPress={() => {
+              const next = toggleActivity(data, key, a.id);
+              commit(next, activityDone(next, key, a.id) ? `${a.name} işaretlendi; program buna göre düzenlendi` : 'İşaret kaldırıldı');
+            }}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: done, disabled: future }}
+            style={[s.actCard, { borderColor: done ? c.leaf : c.line, borderStyle: done ? 'solid' : 'dashed', backgroundColor: done ? c.leafSoft : c.card, opacity: future ? 0.75 : 1 }]}
+          >
+            <View style={[s.actBox, { borderColor: done ? c.leaf : c.line, backgroundColor: done ? c.leaf : c.sunk }]}>
+              <Text style={{ color: done ? c.card : 'transparent', fontWeight: '800' }}>✓</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: c.text, fontWeight: '700' }}>{ty.icon} {a.name}</Text>
+              <Text style={{ color: c.muted, fontSize: 12 }}>
+                {a.minutes} dk · {done ? `gittin, ~${fmt(kcal)} kcal yaktın` : future ? 'planlı · o gün gelince işaretle' : `gittiysen işaretle (~${fmt(kcal)} kcal)`}
+              </Text>
+            </View>
+          </Pressable>
+        );
+      })}
+      {(p.notes ?? []).map((n) => (
+        <View key={n} style={[s.note, { backgroundColor: c.card, borderLeftColor: c.water }]}>
+          <Text style={{ color: c.text, fontSize: 13, lineHeight: 19 }}>{n}</Text>
+        </View>
+      ))}
+      {p.optional && <Text style={{ color: c.muted, fontSize: 12 }}>Kettlebell bugün isteğe bağlı. Yaparsan 20–25 dakikada bitir.</Text>}
+
       {p.rest ? (
         <Card>
           <Text style={[ui.cardTitle, { color: c.text, textAlign: 'center' }]}>Bugün dinlen</Text>
@@ -114,10 +154,11 @@ export default function WorkoutScreen({ data, commit, startTimer }: Props) {
           </Text>
         </Card>
       ) : (
-        (p.blocks ?? []).map((b, bi) => (
+        (p.blocks ?? []).map((b, bi) => b.ex.every((x) => x.skip) ? null : (
           <View key={b.t} style={{ gap: 10 }}>
             <Text style={[s.blockT, { color: c.muted }]}>{b.t.toLocaleUpperCase('tr-TR')}</Text>
             {b.ex.map((x, ei) => {
+              if (x.skip) return null;
               const ek = exKey(bi, ei, data);
               const arr = sets[ek] ?? [];
               const all = arr.filter(Boolean).length === x.s;
@@ -165,6 +206,11 @@ export default function WorkoutScreen({ data, commit, startTimer }: Props) {
         ))
       )}
 
+      {!p.rest && (p.blocks ?? []).some((bl) => bl.ex.some((x) => x.skip)) && (
+        <Text style={{ color: c.muted, fontSize: 12 }}>
+          Bugün atlanan: {(p.blocks ?? []).flatMap((bl) => bl.ex.filter((x) => x.skip).map((x) => x.n)).join(', ')}
+        </Text>
+      )}
       {!p.rest && (
         <Pressable
           onPress={() => Alert.alert('Günün setleri sıfırlansın mı?', undefined, [
@@ -260,5 +306,9 @@ const s = StyleSheet.create({
   timer: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 12 },
   tprog: { position: 'absolute', left: 0, top: 0, height: 3 },
   clock: { fontSize: 28, fontWeight: '800', fontVariant: ['tabular-nums'], minWidth: 70 },
+  actCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderRadius: 14, padding: 12 },
+  actBox: { width: 30, height: 30, borderRadius: 9, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  actBadge: { position: 'absolute', top: -7, left: -4, fontSize: 11 },
+  note: { borderLeftWidth: 4, borderRadius: 12, padding: 12 },
   tbtn: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8 },
 });

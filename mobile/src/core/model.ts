@@ -76,6 +76,16 @@ export interface Measure {
   thigh?: number;
 }
 
+/** Haftalık tekrar eden dış aktivite (ör. Salı basketbol antrenmanı) */
+export interface Activity {
+  id: string;
+  name: string;
+  type: 'basketball' | 'football' | 'running' | 'swimming' | 'cycling' | 'other';
+  /** Haftanın günü (Pazartesi = 0) */
+  day: number;
+  minutes: number;
+}
+
 export interface Data {
   version: 2;
   profile: Profile;
@@ -96,6 +106,10 @@ export interface Data {
   measures?: Record<string, Measure>;
   /** Antrenman programı odağı */
   programFocus?: 'balanced' | 'upper';
+  /** Düzenli dış aktiviteler */
+  activities?: Activity[];
+  /** Tarih -> aktivite kimliği -> yapıldı mı (tik) */
+  activityLog?: Record<string, Record<string, boolean>>;
 }
 
 export const DEFAULT_DATA: Data = {
@@ -114,6 +128,8 @@ export const DEFAULT_DATA: Data = {
   favDrinks: ['cay', 'filtre-kahve', 'ayran'],
   workouts: {},
   kbWeight: 12,
+  activities: [{ id: 'basketbol', name: 'Basketbol antrenmanı', type: 'basketball', day: 1, minutes: 90 }],
+  activityLog: {},
 };
 
 /** Eski (v1) veya eksik verileri güncel yapıya taşır */
@@ -138,6 +154,8 @@ export function migrate(raw: unknown): Data {
     workouts: d.workouts ?? {},
     kbWeight: d.kbWeight ?? base.kbWeight,
     measures: d.measures ?? {},
+    activities: d.activities ?? base.activities,
+    activityLog: d.activityLog ?? {},
   };
 }
 
