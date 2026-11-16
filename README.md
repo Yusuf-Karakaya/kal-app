@@ -26,8 +26,15 @@ kalori, protein, karbonhidrat ve yağı hesaplar.
 > *"kahvaltıda 2 haşlanmış yumurta, yarım simit, 1 dilim kaşar ve 2 bardak çay içtim"*
 > → 4 kalem, 394 kcal, 23 g protein; öğün otomatik "Kahvaltı", çay su hedefine 180 ml olarak sayılır.
 
-- **250+ yemek ve içecek**: kahvaltılıklar, çorbalar, ev yemekleri, kebaplar, fast food, tatlılar,
-  meyveler, kuruyemişler, kahveler. Değerler 100 g başına; TürKomp ve USDA temel alınarak yuvarlanmış tahminlerdir.
+- **560+ yemek ve içecek, 2000+ ad**: kahvaltılıklar, çorbalar, ev ve yöresel yemekler (kuzu tandır, beyti,
+  etli ekmek, keşkek, sini köftesi…), kebaplar, deniz ürünleri, sokak lezzetleri, dünya mutfağı (köri, ramen, poke,
+  burrito, pad thai, suşi…), zincir ve paket ürünler (marka adlarıyla), tatlılar, meyveler, kuruyemişler, içecekler.
+  Değerler 100 g başına; TürKomp ve USDA FoodData Central temel alınarak tipik tariflerden hesaplanmış tahminlerdir.
+- **Sos ve niteleyiciler**: *körili, kremalı, kaşarlı, sucuklu, ballı, tereyağlı, kızarmış/pane* gibi ekler
+  yemeğin üstüne eklenir ("körili tavuk sote" → tavuk sote + köri sosu). *-sız/-süz* yokluk bildirir (*misosuz*).
+- **Yazım hatası toleransı**: *tavkk sote, mercimel çorbası, lahmacum, iskendr* doğru yemeğe eşleşir.
+- **Her yemeğe bir değer**: veritabanında olmayan bir yemek türüne göre tahmin edilir (*hünnap tatlısı* → tatlı
+  ortalaması, "tahmini" etiketiyle). Hiçbir türe uymuyorsa ortalama bir porsiyon önerilir; doğrusunu yazarsan öğrenir.
 - **Türkçe anlama**: yazıyla sayılar (*iki, yarım, bir buçuk*), ölçüler (*su bardağı, yemek kaşığı, dilim,
   kase, 150 gr, 330 ml*), ekli kelimeler (*ekmeği, çayı*), Türkçe karaktersiz yazım (*corba, yogurt*),
   sonda yazılan miktar (*pizza 2 dilim*), niteleyiciler (*peynirli tost* → tost).
@@ -160,7 +167,8 @@ Bilgisayarda tarayıcıda önizlemek için: `npx expo start --web` (bildirimler 
 ```
 mobile/
   src/core/                  web ve mobilin ORTAK çekirdeği (TypeScript, platformdan bağımsız)
-    foods.ts                 yemek/içecek veritabanı
+    foods.ts                 yemek/içecek veritabanı (temel)
+    foods_ext.ts             genişletilmiş veritabanı: yöresel, dünya mutfağı, markalar, ek adlar
     parse.ts                 Türkçe doğal dil ayrıştırıcı
     model.ts                 veri modeli, hedef ve makro hesapları, kayıt işlemleri
     insights.ts              kilo trendi, harcama tahmini, seriler, öneriler
@@ -204,6 +212,8 @@ bir HTML dosyasına dönüştürür (claude.ai Artifact sayfası olarak yayınla
 - Vücut prototipindeki anatomik çizimler (`mobile/src/core/anatomy.ts`) [react-native-body-highlighter](https://github.com/HichamELBSI/react-native-body-highlighter)
   paketinden alınmıştır — MIT Lisansı, © 2022 ELABBASSI Hicham. Yollar `tools/extract_anatomy.py` ile veri olarak aktarılır.
 - Yağ oranı: ABD Donanması çevre yöntemi (Hodgdon & Beckett, 1984); ölçü yoksa Deurenberg (1991) BMI tahmini.
+- Besin değerleri: TürKomp (Ulusal Gıda Kompozisyon Veri Tabanı) ve USDA FoodData Central (CC0, kamu malı)
+  ham malzeme değerleri üzerinden tipik tariflerle hesaplanıp yuvarlanmıştır; markalı ürünlerde ambalaj ortalamaları.
 - Günlük harcama: Mifflin-St Jeor. Yakılan kalori: Compendium of Physical Activities MET değerleri.
 
 ## Yedeği taşımak
