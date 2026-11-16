@@ -20,6 +20,10 @@ export interface ParsedItem {
   hydrationMl: number;
   /** Okunabilir açıklama: "2 adet Haşlanmış yumurta" */
   label: string;
+  /** Sos/niteleyici eklemeleri ("körili", "kremalı") */
+  mods?: string[];
+  /** Veritabanında birebir yok; kategoriye göre tahmin edildi */
+  estimate?: boolean;
 }
 
 export interface UnknownItem {
@@ -28,6 +32,10 @@ export interface UnknownItem {
   /** Miktar ve ölçüden arındırılmış ad ("1 kase kinoa" → "kinoa") */
   name: string;
   qty: number;
+  /** Porsiyon başına kaba tahmin (kcal) */
+  guess?: number;
+  /** Miktar/ölçü açıkça yazıldıysa tahmin doğrudan kullanılabilir */
+  sure?: boolean;
 }
 
 export interface ParseResult {
@@ -84,8 +92,47 @@ const SHORT_SUFFIXES = new Set([
 ]);
 const MUTATE: Record<string, string> = { k: 'g', p: 'b', t: 'd', c: 'c' };
 
-function tokenMatches(token: string, alias: string): boolean {
+/** İki kelime arasındaki düzenleme uzaklığı; yan yana iki harfin yer değiştirmesi ("tavku") tek hata sayılır */
+function lev(a: string, b: string, max: number): number {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  const d: number[][] = [];
+  for (let i = 0; i <= a.length; i++) d.push([i]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    let rowMin = Infinity;
+    for (let j = 1; j <= b.length; j++) {
+      let v = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, d[i - 2][j - 2] + 1);
+      d[i][j] = v;
+      rowMin = Math.min(rowMin, v);
+    }
+    if (rowMin > max) return max + 1;
+  }
+  return d[a.length][b.length];
+}
+
+/** Yazım hatası toleransı: uzun kelimelerde 1, çok uzunlarda 2 harf hata; ek almış hâli de kabul edilir */
+function fuzzyMatches(token: string, alias: string, multi = false): boolean {
+  // Çok kelimeli adlarda ("tavuk sotte") 4 harfli kelimeler de 1 hatayla kabul edilir
+  if (alias.length < (multi ? 4 : 5) || token.length < 4) return false;
+  // "şekersiz" ile "şekerli" zıt anlamlıdır; ekleri farklıysa hatalı yazım sayılmaz
+  const neg = (w: string) => /(siz|suz)$/.test(w), withx = (w: string) => /(li|lu)$/.test(w);
+  if (neg(token) !== neg(alias) || (withx(alias) && neg(token)) || (withx(token) && neg(alias))) return false;
+  const max = alias.length >= 8 ? 2 : 1;
+  if (lev(token, alias, max) <= max) return true;
+  // "kavurmasi" gibi ek almış ve hatalı yazılmış: ad uzunluğundaki öneki karşılaştır
+  if (alias.length < 6) return false;
+  for (let extra = 1; extra <= 5 && alias.length + extra <= token.length; extra++) {
+    if (lev(token.slice(0, alias.length + extra - 1), alias, max) <= max) return true;
+  }
+  return false;
+}
+
+function tokenMatches(token: string, alias: string, fuzzy = false, multi = false): boolean {
   if (token === alias) return true;
+  // "-sız/-süz" yokluk bildirir: "misosuz ramen" miso içermez
+  if (/(siz|suz)$/.test(token) && token.length - alias.length <= 4 && token.startsWith(alias.slice(0, -1))) return false;
+  if (fuzzy && fuzzyMatches(token, alias, multi)) return true;
   const candidates = [alias];
   const last = alias[alias.length - 1];
   if (alias.length >= 4 && MUTATE[last]) candidates.push(alias.slice(0, -1) + MUTATE[last]);
@@ -125,19 +172,20 @@ const ALIAS_INDEX: IndexedAlias[] = FOODS.flatMap((food) =>
 
 interface FoodMatch { food: Food; used: Set<number>; score: number }
 
-function matchFood(tokens: string[], extra: IndexedAlias[]): FoodMatch | undefined {
+function matchFood(tokens: string[], extra: IndexedAlias[], fuzzy = false): FoodMatch | undefined {
   let best: { food: Food; used: Set<number>; score: number } | undefined;
   for (const entry of [...extra, ...ALIAS_INDEX]) {
     // Ad parçaları sırayla ve aralarında en fazla bir kelime boşlukla bulunmalı
     for (let start = 0; start < tokens.length; start++) {
-      if (!tokenMatches(tokens[start], entry.tokens[0])) continue;
+      const multi = entry.tokens.length > 1;
+      if (!tokenMatches(tokens[start], entry.tokens[0], fuzzy, multi)) continue;
       const used = new Set([start]);
       let pos = start;
       let ok = true;
       for (let k = 1; k < entry.tokens.length; k++) {
         let found = -1;
         for (let j = pos + 1; j <= Math.min(pos + 2, tokens.length - 1); j++) {
-          if (tokenMatches(tokens[j], entry.tokens[k])) { found = j; break; }
+          if (tokenMatches(tokens[j], entry.tokens[k], fuzzy, multi)) { found = j; break; }
         }
         if (found < 0) { ok = false; break; }
         used.add(found);
@@ -146,7 +194,7 @@ function matchFood(tokens: string[], extra: IndexedAlias[]): FoodMatch | undefin
       if (!ok) continue;
       // Daha uzun ad kazanır; eşitlikte kullanıcının eklediği yemek öne geçer.
       // "-li/-lı" eki almış kelime niteleyicidir ("peynirli tost" → tost), puanı düşürülür.
-      const modifier = [...used].some((i, k) => /^(.*)(li|lu)$/.test(tokens[i]) && tokens[i] !== entry.tokens[k] && entry.tokens.length === 1);
+      const modifier = [...used].some((i, k) => /^(.*)(li|lu)$/.test(tokens[i]) && tokens[i] !== entry.tokens[k] && !/(li|lu)$/.test(entry.tokens[k]));
       const score = (modifier ? entry.len * 0.3 : entry.len) + (extra.includes(entry) ? 0.5 : 0);
       if (!best || score > best.score) best = { food: entry.food, used, score };
       break;
@@ -201,6 +249,63 @@ export function customFoodsToFoods(custom: Record<string, number>): Food[] {
     // 1 porsiyon = 100 "birim" kabul edilir; makro bilinmiyor
     kcal, p: 0, c: 0, f: 0, unit: 'porsiyon', grams: 100, units: { porsiyon: 100, adet: 100 }, group: 'diger',
   }));
+}
+
+/* ---------- sos / niteleyici katmanı ---------- */
+// "-li/-lı" ekli niteleyiciler yemeğe sos/malzeme ekler. Değerler, yemeğin 100 g'ı başına eklenen miktardır
+// (ör. körili: hindistan cevizi sütü + yağlı sos ≈ yemeğin %12'si). [kök (katlanmış), görünen ad, p, k, y]
+const MODS: [string, string, number, number, number][] = [
+  ['kori', 'körili', 0.5, 2, 2.5], ['krema', 'kremalı', 0.5, 0.7, 6], ['kasar', 'kaşarlı', 3, 0.2, 3.5],
+  ['peynir', 'peynirli', 2.5, 0.2, 2.5], ['sos', 'soslu', 0.3, 4, 1], ['tereyag', 'tereyağlı', 0, 0, 4],
+  ['mayonez', 'mayonezli', 0, 0.3, 6], ['ketcap', 'ketçaplı', 0.2, 4, 0], ['yogurt', 'yoğurtlu', 0.8, 1, 0.8],
+  ['cikolata', 'çikolatalı', 0.6, 6, 3], ['nutella', 'nutellalı', 0.6, 6, 3], ['bal', 'ballı', 0, 8, 0],
+  ['seker', 'şekerli', 0, 6, 0], ['sucuk', 'sucuklu', 2, 0.2, 3.2], ['pastirma', 'pastırmalı', 3, 0, 1],
+  ['kiyma', 'kıymalı', 3, 0, 2.5], ['et', 'etli', 3, 0, 2], ['tavuk', 'tavuklu', 4, 0, 1],
+  ['patates', 'patatesli', 0.3, 4, 1], ['fistik', 'fıstıklı', 1, 1, 3], ['ceviz', 'cevizli', 1, 0.7, 4],
+  ['kaymak', 'kaymaklı', 0.3, 0.3, 5], ['dondurma', 'dondurmalı', 0.5, 3.5, 1.5], ['yumurta', 'yumurtalı', 1.5, 0, 1.3],
+  ['zeytinyag', 'zeytinyağlı', 0, 0, 4], ['tahin', 'tahinli', 1, 1.2, 3.2], ['avokado', 'avokadolu', 0.3, 1, 2.2],
+  ['susam', 'susamlı', 0.6, 0.8, 1.6], ['nohut', 'nohutlu', 0.8, 2, 0.3], ['mantar', 'mantarlı', 0.3, 0.3, 0.8], ['sosis', 'sosisli', 1.5, 0.3, 2.5], ['salam', 'salamlı', 1.5, 0.2, 2], ['karamel', 'karamelli', 0, 6, 1], ['sut', 'sütlü', 0.6, 1, 0.6],
+];
+// Pişirme biçimleri: kızartma/pane yağ ve un ekler
+const COOK_MODS: [RegExp, string, number, number, number][] = [
+  [/^(kizarmis|kizartilmis|pane|panelenmis|citir)$/, 'kızartma', 0.5, 8, 7],
+];
+
+/** Kategoriye göre tahmin: veritabanında olmayan yemekler türüne göre ortalama değer alır */
+const CATEGORIES: [string[], string, number, number, number, number, string, number, Food['group']][] = [
+  // [anahtar kelimeler, tür adı, kcal, p, k, y (100 g), birim, gram, grup]
+  [['corba'], 'çorba', 60, 2.5, 7, 2.5, 'kase', 250, 'corba'],
+  [['salata', 'meze'], 'salata/meze', 90, 2.5, 7, 6, 'porsiyon', 200, 'salata'],
+  [['tatli', 'pasta', 'helva'], 'tatlı', 320, 5, 45, 13, 'porsiyon', 120, 'tatli'],
+  [['borek', 'pogaca', 'corek', 'pide'], 'hamur işi', 300, 9, 30, 16, 'adet', 120, 'ekmek'],
+  [['kebap', 'kebab', 'kebabi', 'sis'], 'kebap', 220, 15, 8, 14, 'porsiyon', 250, 'et'],
+  [['kofte'], 'köfte', 240, 15, 8, 16, 'porsiyon', 150, 'et'],
+  [['pilav', 'pilavi'], 'pilav', 170, 3.5, 28, 5, 'porsiyon', 180, 'ana'],
+  [['makarna', 'eriste', 'manti'], 'makarna', 160, 5.5, 26, 4, 'porsiyon', 250, 'ana'],
+  [['dolma', 'dolmasi', 'sarma', 'sarmasi'], 'dolma/sarma', 150, 4, 18, 7, 'porsiyon', 200, 'ana'],
+  [['tava', 'kizartma', 'kizartmasi'], 'kızartma', 230, 12, 12, 15, 'porsiyon', 150, 'ana'],
+  [['izgara', 'kavurma', 'sote'], 'ızgara/sote', 180, 20, 3, 10, 'porsiyon', 200, 'et'],
+  [['yemek', 'yemegi', 'guvec', 'yahni', 'haslama'], 'ev yemeği', 110, 5, 9, 6, 'porsiyon', 250, 'ana'],
+  [['sebze', 'sebzeli'], 'sebze yemeği', 70, 2, 8, 3.5, 'porsiyon', 250, 'ana'],
+  [['tost', 'sandvic', 'durum', 'burger', 'wrap'], 'sandviç/dürüm', 250, 11, 26, 11, 'adet', 200, 'fastfood'],
+  [['kek', 'kurabiye', 'biskuvi', 'bar', 'gofret'], 'atıştırmalık', 430, 6, 58, 19, 'adet', 50, 'tatli'],
+  [['suyu', 'icecegi', 'serbet', 'serbeti', 'limonata'], 'içecek', 45, 0.3, 11, 0, 'bardak', 200, 'icecek'],
+  [['cayi', 'cay'], 'çay', 2, 0, 0.4, 0, 'bardak', 200, 'icecek'],
+  [['kahve', 'kahvesi', 'latte'], 'kahve', 40, 2, 4, 1.5, 'bardak', 250, 'icecek'],
+  [['sos', 'sosu', 'ezme', 'ezmesi'], 'sos/ezme', 200, 2, 10, 17, 'yemek kaşığı', 15, 'diger'],
+  [['meyve', 'meyvesi'], 'meyve', 55, 0.7, 13, 0.3, 'adet', 150, 'meyve'],
+  [['peynir', 'peyniri'], 'peynir', 300, 20, 2, 24, 'dilim', 30, 'kahvalti'],
+  [['ekmek', 'ekmegi'], 'ekmek', 260, 9, 50, 3, 'dilim', 50, 'ekmek'],
+  [['balik', 'baligi'], 'balık', 170, 20, 2, 9, 'porsiyon', 180, 'et'],
+];
+const DEFAULT_GUESS_KCAL = 250; // tanınmayan bir porsiyon için kaba ortalama
+
+function categoryFor(tokens: string[]): (typeof CATEGORIES)[number] | undefined {
+  // Sondaki kelime türü en iyi anlatır ("kabak çiçeği dolması" → dolma); sağdan sola bak
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    for (const cat of CATEGORIES) if (cat[0].some((k) => tokenMatches(tokens[i], k))) return cat;
+  }
+  return undefined;
 }
 
 /** Tek bir parçayı (ör. "2 dilim tam buğday ekmeği") çözümler */
@@ -270,20 +375,42 @@ function parseSegment(segment: string, extra: IndexedAlias[]): { item: ParsedIte
   } else if (stripped) {
     m = { ...stripped, used: new Set([...stripped.used].map((k) => strippedIdx[k])) };
   }
+  // 3) Yazım hatası toleransıyla da ara ("tavkk sote", "mercimel çorbası"); belirgin biçimde daha uzun
+  // bir ad yakalarsa onu tercih et ("mercimel çorbası" → "çorba" yerine "mercimek çorbası")
+  const fz = matchFood(strippedIdx.map((j) => cand[j]), extra, true);
+  if (fz && (!m || (fz.used.size > m.used.size && fz.score * 0.85 > m.score))) m = { ...fz, used: new Set([...fz.used].map((k) => strippedIdx[k])) };
   const unit = unitHit?.unit;
+  let estimate = false;
+
+  if (!m) {
+    // 4) Türüne göre tahmin ("zencefilli havuç çorbası" → çorba ortalaması)
+    const words = strippedIdx.map((j) => cand[j]);
+    const cat = categoryFor(words);
+    if (cat && words.length) {
+      const [, label, kcal, p, c, f, cu, cg, group] = cat;
+      m = {
+        food: { id: 'tahmini:' + label, name: label, aliases: [], kcal, p, c, f, unit: cu, grams: cg, units: { kase: Math.min(250, Math.round(cg * 1.25)), [cu]: cg }, group, hydration: group === 'icecek' ? 0.85 : undefined },
+        used: new Set(strippedIdx),
+        score: 0,
+      };
+      estimate = true;
+    }
+  }
 
   if (!m) {
     return {
       item: {
         text: segment.trim(), qty: qty ?? 1, unit: unit ?? '', grams: 0, kcal: 0, p: 0, c: 0, f: 0, hydrationMl: 0,
         label: segment.trim(),
+        // Miktar ya da ölçü yazıldıysa bunun bir yiyecek olduğu neredeyse kesin
+        estimate: qty !== undefined || !!unit,
       },
     };
   }
   // "domates salatalık" gibi yan yana yazılmış başka bir yemek kaldıysa ayrıca çözülsün
   const used = m.used;
   // "-li/-lı" ekli niteleyiciler ("mantarlı pizza") ayrı yemek sayılmaz
-  const left = cand.filter((t, j) => !used.has(j) && !unitHit?.idx.includes(j) && !FILLER.has(t) && !(t.length > 4 && /(li|lu)$/.test(t)));
+  const left = cand.filter((t, j) => !used.has(j) && !unitHit?.idx.includes(j) && !FILLER.has(t) && !(t.length > 4 && /(li|lu|siz|suz)$/.test(t)) && !['ustu', 'ustune', 'yaninda', 'arasi'].includes(t));
   const leftover = left.length && matchFood(left, extra) ? left.join(' ') : undefined;
   const food = m.food;
   const q = qty ?? 1;
@@ -303,6 +430,31 @@ function parseSegment(segment: string, extra: IndexedAlias[]): { item: ParsedIte
 
   grams = Math.round(grams);
   const n = nutrientsFor(food, grams);
+
+  // Sos/niteleyiciler: yemeğin adında zaten yoksa değerine eklenir ("körili tavuk sote" → sote + köri sosu)
+  const mods: string[] = [];
+  const own = food.aliases.map(fold).join(' ') + ' ' + fold(food.name);
+  const ownWords = own.split(/\s+/);
+  const addMod = (name: string, p: number, c: number, f: number) => {
+    const k = grams / 100;
+    n.p = Math.round((n.p + p * k) * 10) / 10;
+    n.c = Math.round((n.c + c * k) * 10) / 10;
+    n.f = Math.round((n.f + f * k) * 10) / 10;
+    n.kcal += Math.round((p * 4 + c * 4 + f * 9) * k);
+    mods.push(name);
+  };
+  if (!food.id.startsWith('custom:') && food.group !== 'icecek') {
+    cand.forEach((t, j) => {
+      if (used.has(j) || unitHit?.idx.includes(j)) return;
+      const mm = /^(.+?)(li|lu)$/.exec(t);
+      if (mm) {
+        const mod = MODS.find(([stem]) => mm[1] === stem || (stem.length >= 4 && mm[1].startsWith(stem) && mm[1].length - stem.length <= 1));
+        if (mod && !ownWords.some((w) => w.startsWith(mod[0])) && !mods.includes(mod[1])) addMod(mod[1], mod[2], mod[3], mod[4]);
+      }
+      const cm = COOK_MODS.find(([re]) => re.test(t));
+      if (cm && !/kizar|pane|tava|citir|nugget/.test(own) && !mods.includes(cm[1])) addMod(cm[1], cm[2], cm[3], cm[4]);
+    });
+  }
   const qtyText = unitLabel === 'g' || unitLabel === 'ml' ? `${Math.round(q)} ${unitLabel}` : `${formatQty(q)} ${unitLabel}`.trim();
   const item: ParsedItem = {
     text: segment.trim(),
@@ -312,8 +464,10 @@ function parseSegment(segment: string, extra: IndexedAlias[]): { item: ParsedIte
     grams,
     ...n,
     hydrationMl: food.hydration ? Math.round(grams * food.hydration) : 0,
-    label: `${qtyText} ${food.name}`.replace(/\s+/g, ' ').trim(),
+    label: `${qtyText} ${food.name}${mods.length ? ' + ' + mods.join(', ') : ''}`.replace(/\s+/g, ' ').trim(),
   };
+  if (mods.length) item.mods = mods;
+  if (estimate) item.estimate = true;
   return { item, leftover };
 }
 
@@ -322,6 +476,7 @@ const PHRASES: [RegExp, string][] = [
   [/\b(3\s*u\s*1\s*arada|3\s*u\s*bir\s*arada|ucu\s*bir\s*arada)\b/g, 'hazir kahve'],
   [/\byarim ekmek doner\b/g, '1 adet ekmek arasi doner'],
   [/\byarim ekmek kokorec\b/g, '1 porsiyon kokorec'],
+  [/\byarim ekmek tantuni\b/g, '1 adet tantuni ekmek'],
   [/\bceyrek ekmek kokorec\b/g, '0.6 porsiyon kokorec'],
   [/\byarim ekmek (kofte|sucuk|tavuk)\b/g, '1 adet hamburger'],
 ];
@@ -379,12 +534,18 @@ export function parseMealText(text: string, customFoods: Record<string, number> 
     for (let guard = 0; next && guard < 6; guard++) {
       const r = parseSegment(next, extra);
       if (!r) break;
-      if (r.item.food) items.push(r.item);
+      if (r.item.food && r.item.estimate) {
+        // Tahmini kalem: kullanıcının yazdığı adı göster ("1 kase Zencefilli havuç çorbası · tahmini çorba")
+        const nm = cleanName(restore(r.item.text));
+        const q = r.item.unit === 'g' || r.item.unit === 'ml' ? `${Math.round(r.item.qty)} ${r.item.unit}` : `${formatQty(r.item.qty)} ${r.item.unit}`;
+        const shown = nm ? nm.charAt(0).toLocaleUpperCase('tr-TR') + nm.slice(1) : r.item.food.name;
+        items.push({ ...r.item, label: `${q} ${shown} (tahmini ${r.item.food.name})`.replace(/\s+/g, ' ').trim() });
+      } else if (r.item.food) items.push(r.item);
       else {
         const raw = restore(r.item.text);
         unknown.push(raw);
         const name = cleanName(raw);
-        if (name) unknownItems.push({ text: raw, name, qty: r.item.qty });
+        if (name) unknownItems.push({ text: raw, name, qty: r.item.qty, guess: Math.round(DEFAULT_GUESS_KCAL * (r.item.qty || 1)), sure: !!r.item.estimate });
       }
       next = r.leftover;
     }

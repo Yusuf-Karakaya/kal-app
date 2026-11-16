@@ -36,6 +36,12 @@ export default function TodayScreen({ data, dayKey, commit }: Props) {
     const h = setTimeout(() => {
       const r = parseMealText(text, data.customFoods);
       setParsed(r);
+      // Miktarı yazılmış ama tanınmayan yemeklere ortalama porsiyon tahmini önceden yazılır (düzeltilebilir)
+      setUnknownKcal((m) => {
+        const next = { ...m };
+        for (const u of r.unknownItems) if (u.sure && u.guess && next[u.text] === undefined) next[u.text] = String(u.guess);
+        return next;
+      });
       if (r.meal && !mealPinned) setMeal(r.meal);
     }, 150);
     return () => clearTimeout(h);
@@ -146,12 +152,14 @@ export default function TodayScreen({ data, dayKey, commit }: Props) {
               <View key={u.text} style={[s.pvItem, { borderColor: c.line, backgroundColor: c.sunk }]}>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: c.text, fontWeight: '600' }}>{u.text}</Text>
-                  <Text style={{ color: c.muted, fontSize: 12 }}>Bunu tanımadım. Toplam kalorisini yaz, “{u.name}” adıyla öğrenirim.</Text>
+                  <Text style={{ color: c.muted, fontSize: 12 }}>
+                    {u.sure ? `Tam tanımadım; ortalama bir porsiyon tahmini (~${u.guess} kcal) yazdım. Doğrusunu yazarsan “${u.name}” adıyla öğrenirim.` : `Bunu tanımadım. Yemekse kalorisini yaz (ortalama porsiyon ~${u.guess} kcal), “${u.name}” adıyla öğrenirim.`}
+                  </Text>
                 </View>
                 <TextInput
                   value={unknownKcal[u.text] ?? ''}
                   onChangeText={(v) => setUnknownKcal((m) => ({ ...m, [u.text]: v }))}
-                  placeholder="kcal"
+                  placeholder={u.guess ? `~${u.guess}` : 'kcal'}
                   placeholderTextColor={c.muted}
                   keyboardType="number-pad"
                   style={[s.kcalInput, { borderColor: c.line, color: c.text, backgroundColor: c.card }]}

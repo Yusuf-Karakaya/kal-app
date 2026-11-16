@@ -214,6 +214,7 @@ function renderPreview() {
     $('#addParsed').textContent = 'Ekle';
     return;
   }
+  for (const u of unknownItems) if (u.sure && u.guess && unknownKcal[u.text] === undefined) unknownKcal[u.text] = String(u.guess);
   let html = items.map((it, i) => `
     <div class="pv-item">
       <div class="pv-main">
@@ -227,9 +228,9 @@ function renderPreview() {
     <div class="pv-item unknown">
       <div class="pv-main">
         <span class="pv-name">${esc(u.text)}</span>
-        <span class="pv-macro">Bunu tanımadım. Toplam kalorisini yaz, “${esc(u.name)}” adıyla öğrenip sonra kendim hesaplarım.</span>
+        <span class="pv-macro">${u.sure ? `Tam tanımadım; ortalama bir porsiyon tahmini (~${u.guess} kcal) yazdım. Doğrusunu yazarsan “${esc(u.name)}” adıyla öğrenirim.` : `Bunu tanımadım. Yemekse kalorisini yaz (ortalama porsiyon ~${u.guess} kcal), “${esc(u.name)}” adıyla öğrenirim.`}</span>
       </div>
-      <input type="number" class="pv-input" data-unknown="${esc(u.text)}" value="${esc(unknownKcal[u.text] ?? '')}" placeholder="kcal" inputmode="numeric" min="0" max="5000" aria-label="${esc(u.text)} kalorisi" />
+      <input type="number" class="pv-input" data-unknown="${esc(u.text)}" value="${esc(unknownKcal[u.text] ?? '')}" placeholder="${u.guess ? '~' + u.guess : 'kcal'}" inputmode="numeric" min="0" max="5000" aria-label="${esc(u.text)} kalorisi" />
     </div>`).join('');
   html += `<div class="pv-total"><span>Toplam</span><span>${previewTotalText()}</span></div>`;
   box.innerHTML = html;

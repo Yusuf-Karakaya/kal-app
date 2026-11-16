@@ -107,9 +107,52 @@ test('tanınmayan parça raporlanır', () => {
 
 test('tanınmayan parçanın adı ve miktarı çıkarılır', () => {
   const r = parseMealText('2 kase Amarant');
-  assert.deepEqual(r.unknownItems, [{ text: '2 kase amarant', name: 'amarant', qty: 2 }]);
-  assert.equal(parseMealText('1 yemek kaşığı kuşkonmaz').unknownItems[0].name, 'kuşkonmaz');
-  assert.equal(parseMealText('kuzu tandır yedim').unknownItems[0].name, 'kuzu tandır');
+  assert.deepEqual(r.unknownItems, [{ text: '2 kase amarant', name: 'amarant', qty: 2, guess: 500, sure: true }]);
+  assert.equal(parseMealText('1 yemek kaşığı ceviche').unknownItems[0].name, 'ceviche');
+  assert.equal(parseMealText('bulgogi yedim').unknownItems[0].name, 'bulgogi');
+});
+
+test('genişletilmiş veritabanı: yöresel ve dünya yemekleri', () => {
+  const id = (t: string) => parseMealText(t).items.map((i) => i.food?.id);
+  assert.deepEqual(id('1 tabak körili tavuk'), ['korili-tavuk']);
+  assert.deepEqual(id('kremalı mantarlı tavuk'), ['kremali-tavuk']);
+  assert.deepEqual(id('fıstık ezmeli tost'), ['fistik-ezmeli-tost']);
+  assert.deepEqual(id('etli ekmek'), ['etli-ekmek']);
+  assert.deepEqual(id('kuzu tandır ve beyti'), ['kuzu-tandir', 'beyti']);
+  assert.deepEqual(id('1 tabak pirinç pilavı üstü kuru fasulye'), ['kurufasulye-pilav']);
+  assert.ok(FOODS.length >= 500, `yalnızca ${FOODS.length} yemek`);
+});
+
+test('sos/niteleyici yemeğin değerine eklenir', () => {
+  const base = parseMealText('1 adet lahmacun').items[0];
+  const mod = parseMealText('1 adet kaşarlı lahmacun').items[0];
+  assert.equal(mod.food?.id, 'lahmacun');
+  assert.ok(mod.kcal > base.kcal, `${mod.kcal} > ${base.kcal}`);
+  assert.deepEqual(mod.mods, ['kaşarlı']);
+  // Adında zaten olan niteleyici ikinci kez eklenmez
+  assert.equal(parseMealText('kremalı makarna').items[0].mods, undefined);
+  // "-sız" yokluk bildirir, ayrı yemek sayılmaz
+  assert.deepEqual(parseMealText('1 kase misosuz ramen').items.map((i) => i.food?.id), ['ramen']);
+});
+
+test('yazım hatası toleransı', () => {
+  const id = (t: string) => parseMealText(t).items[0]?.food?.id;
+  assert.equal(id('tavkk sote'), 'tavuk-sote');
+  assert.equal(id('1 tabak tavuk sotte'), 'tavuk-sote');
+  assert.equal(id('mercimel çorbası'), 'mercimek-corbasi');
+  assert.equal(id('lahmacum'), 'lahmacun');
+  assert.equal(id('salam'), 'salam'); // doğru yazılmış kısa ad bozulmaz
+  assert.equal(id('şekersiz kahve'), 'filtre-kahve'); // zıt ek hatalı yazım sayılmaz
+});
+
+test('tanınmayan yemek türüne göre tahmin edilir', () => {
+  const t = parseMealText('1 kase hünnap tatlısı');
+  assert.equal(t.items[0].estimate, true);
+  assert.ok(t.items[0].kcal > 300 && t.items[0].kcal < 700, String(t.items[0].kcal));
+  assert.match(t.items[0].label, /Hünnap tatlısı \(tahmini tatlı\)/);
+  // Hiçbir türe uymuyorsa ortalama porsiyon önerilir; miktar yazılmadıysa kendiliğinden eklenmez
+  assert.equal(parseMealText('1 kase bulgogi').unknownItems[0].sure, true);
+  assert.equal(parseMealText('çok yoruldum').unknownItems[0].sure, false);
 });
 
 test('kişisel yemekte ölçü 1 porsiyon sayılır', () => {

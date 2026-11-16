@@ -27,6 +27,8 @@ export type FoodGroup =
   | 'kahvalti' | 'ekmek' | 'corba' | 'ana' | 'et' | 'fastfood' | 'salata'
   | 'meyve' | 'kuruyemis' | 'tatli' | 'icecek' | 'diger';
 
+import { ALIAS_ADD, EXT_ROWS } from './foods_ext';
+
 // [id, ad, ek adlar ("|" ile), kcal, p, c, f, varsayılan birim, gram, diğer birimler ("birim:g,..."), grup, ek]
 type Row = [string, string, string, number, number, number, number, string, number, string, FoodGroup, Partial<Food>?];
 
@@ -268,17 +270,17 @@ const ROWS: Row[] = [
   ['kunefe', 'Künefe', 'künefe|kadayıf|tel kadayıf', 360, 8, 40, 19, 'porsiyon', 150, '', 'tatli'],
   ['sutlac', 'Sütlaç', 'sütlaç|fırın sütlaç|muhallebi|keşkül|puding', 120, 3.5, 20, 3, 'kase', 200, '', 'tatli'],
   ['kazandibi', 'Kazandibi / tavuk göğsü tatlısı', 'kazandibi|tavuk göğsü tatlısı', 140, 4, 22, 4, 'porsiyon', 150, '', 'tatli'],
-  ['revani', 'Revani / şerbetli tatlı', 'revani|şekerpare|tulumba|lokma|şerbetli tatlı', 330, 4, 55, 10, 'dilim', 80, 'adet:30', 'tatli'],
+  ['revani', 'Revani / şerbetli tatlı', 'revani|tulumba|lokma|şerbetli tatlı', 330, 4, 55, 10, 'dilim', 80, 'adet:30', 'tatli'],
   ['lokum', 'Lokum', 'lokum|türk lokumu', 380, 0.2, 94, 0.2, 'adet', 12, '', 'tatli'],
   ['helva', 'Tahin helvası', 'helva|tahin helvası', 520, 12, 55, 29, 'dilim', 40, '', 'tatli'],
   ['irmik-helvasi', 'İrmik helvası', 'irmik helvası|un helvası', 340, 5, 45, 16, 'porsiyon', 120, '', 'tatli'],
   ['dondurma', 'Dondurma', 'dondurma|maraş dondurması', 210, 3.5, 24, 11, 'top', 50, 'külah:100,kase:150', 'tatli'],
   ['sutlu-cikolata', 'Sütlü çikolata', 'çikolata|sütlü çikolata|tablet çikolata', 535, 7.6, 59, 30, 'kare', 6, 'adet:40,paket:80', 'tatli'],
   ['bitter', 'Bitter çikolata', 'bitter|bitter çikolata|siyah çikolata', 550, 7.8, 45, 38, 'kare', 6, 'adet:40,paket:80', 'tatli'],
-  ['kek', 'Kek', 'kek|pasta|yaş pasta|cheesecake|brownie', 380, 5.5, 50, 18, 'dilim', 80, '', 'tatli'],
+  ['kek', 'Kek', 'kek|pasta|yaş pasta', 380, 5.5, 50, 18, 'dilim', 80, '', 'tatli'],
   ['kurabiye', 'Kurabiye', 'kurabiye|un kurabiyesi|cookie', 480, 6, 62, 23, 'adet', 15, '', 'tatli'],
   ['biskuvi', 'Bisküvi', 'bisküvi|petibör|kraker|galeta', 450, 7, 70, 15, 'adet', 8, 'paket:75', 'tatli'],
-  ['gofret', 'Gofret / çikolatalı bar', 'gofret|çikolatalı bar|bar|albeni|kitkat|snickers', 520, 6, 64, 27, 'adet', 35, '', 'tatli'],
+  ['gofret', 'Gofret / çikolatalı bar', 'gofret|çikolatalı bar|bar|albeni|kitkat', 520, 6, 64, 27, 'adet', 35, '', 'tatli'],
   ['asure', 'Aşure', 'aşure', 140, 3, 28, 2, 'kase', 200, '', 'tatli'],
   ['profiterol', 'Profiterol', 'profiterol|ekler', 280, 5, 30, 16, 'porsiyon', 150, '', 'tatli'],
   ['cips', 'Cips', 'cips|patates cipsi|mısır cipsi', 536, 7, 53, 34, 'paket', 40, 'avuç:20,büyük paket:110', 'tatli'],
@@ -324,9 +326,9 @@ function parseUnits(s: string): Record<string, number> {
   return out;
 }
 
-export const FOODS: Food[] = ROWS.map(([id, name, aliases, kcal, p, c, f, unit, grams, units, group, extra]) => ({
+export const FOODS: Food[] = [...ROWS, ...(EXT_ROWS as Row[])].map(([id, name, aliases, kcal, p, c, f, unit, grams, units, group, extra]) => ({
   id, name,
-  aliases: aliases.split('|').map((a) => a.trim()),
+  aliases: [...aliases.split('|'), ...(ALIAS_ADD[id] ? ALIAS_ADD[id].split('|') : [])].map((a) => a.trim()),
   kcal, p, c, f, unit, grams,
   units: { [unit]: grams, ...parseUnits(units) },
   group,
