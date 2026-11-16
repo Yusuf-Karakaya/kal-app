@@ -73,15 +73,18 @@ kalori, protein, karbonhidrat ve yağı hesaplar.
     Bacaklar toplam yağ oranı düştükçe incelir; bölgesel yağ yakmak mümkün değildir.
   - Program değişince önceki kayıtlar silinmez; kas haritası her iki programın setlerini de sayar.
 - **Düzenli aktiviteler (ör. Salı basketbol antrenmanı):** Ayarlar → Düzenli aktiviteler'den ad, tür (basketbol,
-  futbol, koşu, bisiklet, yüzme, diğer), gün ve süre düzenlenir. O gün Antrenman sekmesinde tikli kutuyla
-  "gittim" işaretlenir; işaretlenmezse hiçbir şey değişmez. Bacakları yoran aktivitelerde:
-  - *Önceki gün* (plana göre): bacak hareketleri yarıya iner, sıçramalı hareketler (swing, snatch, burpee) çıkar.
-  - *Aktivite günü* (işaretlenince): kettlebell isteğe bağlı, kısa ve sadece üst vücut.
-  - *Sonraki gün* (işaretlenince): bacak/sıçrama hareketleri çıkar, baldır, kalça fleksörü ve ayak bileği için
-    toparlanma hareketleri eklenir.
-  - O hafta yapıldıysa üst vücut programındaki bacak koruma squat'ı atlanır.
-  - Yakılan kalori (MET), su hedefi (+dakika başına ~6 ml) ve kas haritası aktiviteyi de hesaba katar.
-  Henüz gelmemiş bir günün aktivitesi işaretlenemez.
+  futbol, koşu, bisiklet, yüzme, diğer), gün ve süre düzenlenir. Antrenman sekmesinde o günün kartında
+  **Gittim** (tik) ve **Gitmedim / Gitmeyeceğim** düğmeleri var. Aktivitenin performansını korumak için
+  (yorgunluk şut isabetini ve sıçramayı düşürür; kas hasarı sprint/yön değiştirmeyi 48 saate kadar etkiler):
+  - *Önceki gün:* bacak hareketleri yarıya iner, sıçramalı hareketler çıkar; basketbolda triseps ve kavrama
+    hareketlerinden birer set düşer. Hiçbir sette tükenişe gidilmez (2–3 tekrar yedek).
+  - *Aktivite günü:* kettlebell yalnızca aktiviteden **sonra** ve isteğe bağlı; bacak, sıçrama, kavrama/ön kol ve
+    triseps hareketleri çıkar; başa 10 dk basketbol öncesi ısınma eklenir.
+  - *Sonraki gün (gidildiyse):* bacak/sıçrama hareketleri çıkar, toparlanma hareketleri eklenir.
+  - O hafta gidildiyse üst vücut programındaki bacak koruma squat'ı atlanır.
+  - "Gitmedim / Gitmeyeceğim" seçilirse önceki gün, o gün ve sonraki gün normal programa döner.
+  - Kalori (MET), su hedefi ve kas haritası yalnızca "Gittim" işaretlenince hesaba katılır; ileri bir tarih "gittim"
+    olarak işaretlenemez.
 
 ### Vücut: kas haritası ve vücut prototipi (Vücut sekmesi)
 - **Hangi kasları geliştiriyorsun:** her kettlebell hareketi çalıştırdığı kaslara eşlenir (ana kas 1,

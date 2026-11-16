@@ -15,7 +15,7 @@ export interface Exercise {
   /** Aktivite nedeniyle bu gün atlanır (ör. basketbol öncesi/sonrası bacak hareketi) */
   skip?: boolean;
 }
-export interface Block { t: string; ex: Exercise[] }
+export interface Block { t: string; ex: Exercise[]; /** Programdan önce gösterilir (ısınma) */ pre?: boolean }
 export interface WorkoutDay {
   k: string;
   name: string;
@@ -188,6 +188,8 @@ const VIDEO: Record<string, string> = {
   'Kettlebell Curl': 'kettlebell bicep curl', 'Close-grip Push-up': 'close grip push up',
   'Clean → Press → Push-up': 'kettlebell clean press push up complex', 'Goblet Squat (hafif)': 'kettlebell goblet squat form',
   'Baldır esnetme': 'calf stretch wall soleus', 'Kalça fleksör esnetme': 'hip flexor stretch half kneeling', 'Ayak bileği mobilitesi': 'ankle mobility knee to wall',
+  'Hafif koşu ve yan adım': 'basketball dynamic warm up', 'Bacak sallama': 'leg swings warm up', 'Rotasyonlu hamle (lunge)': 'lunge with rotation warm up',
+  'Kol çevirme ve omuz açma': 'arm circles shoulder warm up', 'Hafif sıçrama (pogo)': 'pogo jumps warm up',
 };
 
 /** Hareketin YouTube Shorts aramasının adresi */
@@ -248,17 +250,19 @@ export interface ActivityType {
   met: number;
   /** Bacakları ve sıçramayı yoğun kullanıyor mu (önceki/sonraki gün düzenlemesi için) */
   legLoad: boolean;
+  /** Kol/el becerisi gerektiriyor mu (şut, top kontrolü): öncesinde kavrama ve triseps yorulmamalı */
+  upperSkill: boolean;
   /** Kas haritasına katkı (yaklaşık etkili set) */
   muscles: Record<string, number>;
 }
 
 export const ACTIVITY_TYPES: Record<Activity['type'], ActivityType> = {
-  basketball: { label: 'Basketbol', icon: '🏀', met: 6.5, legLoad: true, muscles: { calves: 2, quads: 1, hamstrings: 1, glutes: 1 } },
-  football: { label: 'Futbol', icon: '⚽', met: 7, legLoad: true, muscles: { calves: 1.5, quads: 1.5, hamstrings: 1.5, adductors: 1 } },
-  running: { label: 'Koşu', icon: '🏃', met: 8.3, legLoad: true, muscles: { calves: 2, quads: 1, hamstrings: 1 } },
-  cycling: { label: 'Bisiklet', icon: '🚴', met: 6.8, legLoad: true, muscles: { quads: 2, glutes: 1, calves: 1 } },
-  swimming: { label: 'Yüzme', icon: '🏊', met: 6, legLoad: false, muscles: { upperback: 2, shoulders: 2, chest: 1, triceps: 1 } },
-  other: { label: 'Diğer', icon: '⭐', met: 5, legLoad: false, muscles: {} },
+  basketball: { label: 'Basketbol', icon: '🏀', met: 6.5, legLoad: true, upperSkill: true, muscles: { calves: 2, quads: 1, hamstrings: 1, glutes: 1 } },
+  football: { label: 'Futbol', icon: '⚽', met: 7, legLoad: true, upperSkill: false, muscles: { calves: 1.5, quads: 1.5, hamstrings: 1.5, adductors: 1 } },
+  running: { label: 'Koşu', icon: '🏃', met: 8.3, legLoad: true, upperSkill: false, muscles: { calves: 2, quads: 1, hamstrings: 1 } },
+  cycling: { label: 'Bisiklet', icon: '🚴', met: 6.8, legLoad: true, upperSkill: false, muscles: { quads: 2, glutes: 1, calves: 1 } },
+  swimming: { label: 'Yüzme', icon: '🏊', met: 6, legLoad: false, upperSkill: false, muscles: { upperback: 2, shoulders: 2, chest: 1, triceps: 1 } },
+  other: { label: 'Diğer', icon: '⭐', met: 5, legLoad: false, upperSkill: false, muscles: {} },
 };
 
 /** O güne planlanmış aktiviteler */
@@ -266,12 +270,25 @@ export function activitiesOn(data: Pick<Data, 'activities'>, key: string): Activ
   const idx = programIndex(key);
   return (data.activities ?? []).filter((a) => a.day === idx);
 }
-export const activityDone = (data: Pick<Data, 'activityLog'>, key: string, id: string) => !!data.activityLog?.[key]?.[id];
-export function toggleActivity(data: Data, key: string, id: string): Data {
+/**
+ * Aktivite durumu: true = gitti (tik), false = gitmedi / gitmeyecek, undefined = planlı (gidileceği varsayılır).
+ * Program, planlı ya da yapılmış aktiviteye göre düzenlenir; "gitmedim" seçilirse düzenleme kalkar.
+ */
+export const activityState = (data: Pick<Data, 'activityLog'>, key: string, id: string): boolean | undefined => data.activityLog?.[key]?.[id];
+export const activityDone = (data: Pick<Data, 'activityLog'>, key: string, id: string) => activityState(data, key, id) === true;
+export const activitySkipped = (data: Pick<Data, 'activityLog'>, key: string, id: string) => activityState(data, key, id) === false;
+
+function setActivity(data: Data, key: string, id: string, value: boolean | undefined): Data {
   const day = { ...(data.activityLog?.[key] ?? {}) };
-  day[id] = !day[id];
+  if (value === undefined) delete day[id];
+  else day[id] = value;
   return { ...data, activityLog: { ...(data.activityLog ?? {}), [key]: day } };
 }
+/** "Gittim" kutusu: işaretle / kaldır */
+export const toggleActivity = (data: Data, key: string, id: string) => setActivity(data, key, id, activityDone(data, key, id) ? undefined : true);
+/** "Gitmedim / gitmeyeceğim": program normale döner; tekrar basılınca plana geri döner */
+export const toggleActivitySkip = (data: Data, key: string, id: string) => setActivity(data, key, id, activitySkipped(data, key, id) ? undefined : false);
+
 /** O gün yapılan (tiklenen) aktiviteler */
 export const doneActivities = (data: Data, key: string) => activitiesOn(data, key).filter((a) => activityDone(data, key, a.id));
 
@@ -288,6 +305,10 @@ const LEG_PRIMARY = new Set([
 ]);
 /** Sıçramalı / patlayıcı, bacakları yoran hareketler */
 const BALLISTIC = new Set(['Tek Kol Swing', 'Swing EMOM', 'Swing → Clean → Press → Squat', 'Kettlebell Snatch', 'Burpee']);
+/** Kavrama ve ön kolu yoran hareketler (top kontrolü, şut bileği) */
+const GRIP = new Set(['Wrist Curl', 'Reverse Wrist Curl', 'Hammer Curl', 'Waiter Walk', 'Suitcase Carry', 'Bottoms-up Carry', 'Kettlebell Curl']);
+/** Dirsek açan kasları (triseps) yoran hareketler: şutun ana kası */
+const TRICEPS = new Set(['Overhead Triceps Extension', 'Close-grip Push-up', 'Ayak Yüksek Push-up', 'Tek Kol Floor Press']);
 
 const RECOVERY_BLOCK: Block = {
   t: 'Basketbol sonrası toparlanma',
@@ -298,20 +319,37 @@ const RECOVERY_BLOCK: Block = {
   ],
 };
 
+/** Basketbol öncesi 10 dk dinamik ısınma (yorgunluk yapmaz, isabeti ve sıçramayı destekler) */
+const WARMUP_BLOCK: Block = {
+  t: 'Basketbol öncesi ısınma · 10 dk',
+  pre: true,
+  ex: [
+    { n: 'Hafif koşu ve yan adım', s: 1, r: '3 dk', rest: 0, kg: 0, tip: 'Konuşabileceğin tempoda başla, son dakika yan adım ve geri geri koşu.' },
+    { n: 'Bacak sallama', s: 1, r: '10 / yön / bacak', rest: 0, kg: 0, tip: 'Önden arkaya ve yandan yana, kontrollü; kalçayı açar.' },
+    { n: 'Rotasyonlu hamle (lunge)', s: 1, r: '6 / taraf', rest: 0, kg: 0, tip: 'Hamle yap, gövdeyi öndeki bacağa doğru çevir. Ağırlık yok.' },
+    { n: 'Kol çevirme ve omuz açma', s: 1, r: '10 / yön', rest: 0, kg: 0, tip: 'Küçük daireden büyüğe; sonra kolları göğüs önünde aç-kapa.' },
+    { n: 'Hafif sıçrama (pogo)', s: 1, r: '2 × 10', rest: 20, kg: 0, tip: 'Ayak bileğinden, yere az temas ederek. Yormadan kas-tendonu hazırlar.' },
+  ],
+};
+
 const legActs = (data: Data, key: string) => activitiesOn(data, key).filter((a) => ACTIVITY_TYPES[a.type].legLoad);
+/** Planlı ya da yapılmış ("gitmedim" denmemiş) aktiviteler */
+const activeActs = (data: Data, key: string) => legActs(data, key).filter((a) => !activitySkipped(data, key, a.id));
 
 /**
- * Aktiviteye göre günü düzenler. Hareketler silinmez, "skip" ile işaretlenir ya da seti azaltılır;
- * böylece saklanan set anahtarları (blok-hareket) değişmez.
- * - Önceki gün (planlı aktivite): bacak hareketleri yarıya, sıçramalı hareketler atlanır.
- * - Aktivite günü (tiklendiyse): kettlebell kısa ve isteğe bağlı, bacak/sıçrama yok.
- * - Sonraki gün (tiklendiyse): bacak/sıçrama yok, toparlanma hareketleri eklenir.
- * - Hafta içinde aktivite yapıldıysa: üst vücut programındaki "bacak koruma" squat'ı atlanır.
+ * Aktiviteye göre günü düzenler (bilimsel dayanak: yorgunluk şut isabetini ve sıçramayı düşürür,
+ * kas hasarı sprint/yön değiştirmeyi 48 saate kadar etkiler). Hareketler silinmez, "skip" ile
+ * işaretlenir ya da seti azaltılır; saklanan set anahtarları (blok-hareket) değişmez.
+ * - Önceki gün (plana göre): bacak yarıya, sıçrama yok; basketbolsa triseps/kavrama -1 set, tükenişe gitme.
+ * - Aktivite günü (plana göre): kettlebell sadece aktiviteden SONRA ve isteğe bağlı; bacak, sıçrama,
+ *   kavrama ve triseps hareketleri yok; başta 10 dk ısınma.
+ * - Sonraki gün (gittiysen): bacak/sıçrama yok, toparlanma hareketleri eklenir.
+ * - Hafta içinde gidildiyse: üst vücut programındaki "bacak koruma" squat'ı atlanır.
+ * - "Gitmedim" seçilirse o aktivite için hiçbir düzenleme yapılmaz.
  */
 export function adjustForActivities(data: Data, key: string, base: WorkoutDay): WorkoutDay {
-  if (base.rest || !base.blocks) return base;
-  const tomorrow = legActs(data, addDays(key, 1));
-  const today = legActs(data, key).filter((a) => activityDone(data, key, a.id));
+  const tomorrow = activeActs(data, addDays(key, 1));
+  const today = activeActs(data, key);
   const yesterdayKey = addDays(key, -1);
   const yesterday = legActs(data, yesterdayKey).filter((a) => activityDone(data, yesterdayKey, a.id));
   const monday = addDays(key, -programIndex(key));
@@ -322,35 +360,48 @@ export function adjustForActivities(data: Data, key: string, base: WorkoutDay): 
   const day: WorkoutDay = JSON.parse(JSON.stringify(base));
   const notes: string[] = [];
   const name = (list: Activity[]) => list.map((a) => a.name.toLocaleLowerCase('tr-TR')).join(', ');
-  const each = (fn: (x: Exercise) => void) => day.blocks!.forEach((b) => b.ex.forEach(fn));
+  const skill = (list: Activity[]) => list.some((a) => ACTIVITY_TYPES[a.type].upperSkill);
+  const each = (fn: (x: Exercise) => void) => (day.blocks ?? []).forEach((b) => b.ex.forEach(fn));
 
   if (today.length) {
-    each((x) => {
-      if (LEG_PRIMARY.has(x.n) || BALLISTIC.has(x.n)) x.skip = true;
-      else x.s = Math.max(2, x.s - 1);
-    });
-    day.optional = true;
-    notes.push(`O gün ${name(today)} yapıldı: kettlebell isteğe bağlı, kısa ve sadece üst vücut. Bacak ve sıçrama hareketleri çıkarıldı.`);
-  } else if (yesterday.length) {
-    each((x) => { if (LEG_PRIMARY.has(x.n) || BALLISTIC.has(x.n)) x.skip = true; });
-    day.blocks!.push(JSON.parse(JSON.stringify(RECOVERY_BLOCK)));
-    notes.push(`Bir önceki gün ${name(yesterday)} yapıldı: bacak ve sıçrama hareketleri çıkarıldı, toparlanma hareketleri eklendi.`);
-  } else if (tomorrow.length) {
-    each((x) => {
-      if (BALLISTIC.has(x.n)) x.skip = true;
-      else if (LEG_PRIMARY.has(x.n)) x.s = Math.max(2, Math.ceil(x.s / 2));
-    });
-    if (notes.length === 0 && day.blocks!.some((b) => b.ex.some((x) => x.skip || LEG_PRIMARY.has(x.n)))) {
-      notes.push(`Ertesi gün ${name(tomorrow)} var: bacakları dinç tutmak için bacak hacmi azaltıldı, sıçramalı hareketler çıkarıldı.`);
-    } else {
-      notes.push(`Ertesi gün ${name(tomorrow)} var: bu günün programı zaten bacakları yormuyor.`);
+    const sk = skill(today);
+    if (day.blocks) {
+      each((x) => {
+        if (LEG_PRIMARY.has(x.n) || BALLISTIC.has(x.n) || (sk && (GRIP.has(x.n) || TRICEPS.has(x.n)))) x.skip = true;
+        else x.s = Math.max(2, x.s - 1);
+      });
+      day.optional = true;
     }
+    if (sk) (day.blocks ??= []).push(JSON.parse(JSON.stringify(WARMUP_BLOCK)));
+    const title = today.map((a) => a.name).join(', ');
+    notes.push(day.rest
+      ? `${title} günü: öncesinde 10 dk ısın, sonrasında dinlen.`
+      : `${title} günü: kettlebell'i sadece bu aktiviteden SONRA yap ya da hiç yapma. Öncesinde yaparsan kol, el ve bacak yorgunluğu şut isabetini ve sıçramanı düşürür.`
+        + (sk ? ' Kavrama, ön kol ve triseps hareketleri bu yüzden çıkarıldı; başa 10 dk ısınma eklendi.' : ''));
+  } else if (yesterday.length && day.blocks && !day.rest) {
+    each((x) => { if (LEG_PRIMARY.has(x.n) || BALLISTIC.has(x.n)) x.skip = true; });
+    day.blocks.push(JSON.parse(JSON.stringify(RECOVERY_BLOCK)));
+    notes.push(`Bir önceki gün ${name(yesterday)} yapıldı: bacak ve sıçrama hareketleri çıkarıldı, toparlanma hareketleri eklendi.`);
+  } else if (tomorrow.length && day.blocks && !day.rest) {
+    const sk = skill(tomorrow);
+    let legChanged = false, armChanged = false;
+    each((x) => {
+      if (BALLISTIC.has(x.n)) { x.skip = true; legChanged = true; }
+      else if (LEG_PRIMARY.has(x.n)) { x.s = Math.max(2, Math.ceil(x.s / 2)); legChanged = true; }
+      else if (sk && (GRIP.has(x.n) || TRICEPS.has(x.n))) { x.s = Math.max(2, x.s - 1); armChanged = true; }
+    });
+    const parts: string[] = [];
+    if (legChanged) parts.push('bacak hacmi azaltıldı, sıçramalı hareketler çıkarıldı');
+    if (armChanged) parts.push('triseps ve kavrama hareketlerinden birer set düşüldü');
+    notes.push(`Ertesi gün ${name(tomorrow)} var: ${parts.length ? parts.join('; ') : 'bu günün programı zaten bacakları yormuyor'}.`
+      + ' Hiçbir sette tükenişe gitme, 2–3 tekrar yedek bırak: kas ağrısı 24–48 saat performansı düşürür.');
   }
   if (doneThisWeek && focusOf(data) === 'upper') {
     let changed = false;
     each((x) => { if (x.n === 'Goblet Squat (hafif)' && !x.skip) { x.skip = true; changed = true; } });
     if (changed) notes.push('Bu hafta basketbol bacaklarını yeterince çalıştırdı: bacak koruma squat’ı atlandı.');
   }
+  if (!notes.length) return base;
   day.notes = notes;
   return day;
 }

@@ -422,43 +422,53 @@ test('ölçüden sonraki kilo değişimi yağ oranına ve çizime yansır', () =
 });
 
 /* ---------- dış aktiviteler (basketbol) ---------- */
-import { activityKcal, toggleActivity } from './index';
+import { activityKcal, toggleActivity, toggleActivitySkip } from './index';
 
-test('basketbol: önceki gün plana göre, o gün ve sonraki gün tike göre düzenlenir', () => {
+test('basketbol: önceki gün ve o gün plana göre, sonraki gün tike göre; gitmedim seçilirse normal', () => {
   const mon = '2026-11-09', tue = '2026-11-10', wed = '2026-11-11', sat = '2026-11-14';
   let d = structuredClone(DEFAULT_DATA); // varsayılan: Salı basketbol 90 dk
   d.profile = { ...d.profile, weight: 80 };
   const names = (k: string, dd = d) => programFor(k, dd).blocks!.flatMap((b) => b.ex.filter((x) => !x.skip).map((x) => x.n));
 
-  // Dengeli program, Pazartesi: bacak yarıya, swing atlanır (tik beklenmez, plan yeterli)
+  // Pazartesi (dengeli program): bacak yarıya, swing yok, tükenişe gitme notu
   const monP = programFor(mon, d);
-  assert.ok(monP.notes![0].includes('Ertesi gün'));
+  assert.ok(monP.notes![0].includes('Ertesi gün') && monP.notes![0].includes('tükenişe gitme'));
   assert.ok(!names(mon).includes('Tek Kol Swing'));
-  assert.equal(monP.blocks![0].ex[0].s, 2); // goblet squat 4 → 2
+  assert.equal(monP.blocks![0].ex[0].s, 2);
 
-  // Tiklenmeden Salı ve Çarşamba normal
-  assert.equal(programFor(tue, d).optional, undefined);
+  // Salı, işaretlenmeden de (plana göre): kettlebell sonra/isteğe bağlı, ısınma var, kavrama/triseps yok
+  const tueP = programFor(tue, d);
+  assert.equal(tueP.optional, true);
+  assert.ok(tueP.notes![0].includes('SONRA'));
+  assert.ok(tueP.blocks!.some((b) => b.pre && b.t.includes('ısınma')));
+  for (const n of ['Tek Kol Floor Press', 'Ayak Yüksek Push-up']) assert.ok(!names(tue).includes(n), n); // dengeli Salı: itiş
+  // Çarşamba henüz işaretlenmediği için normal
   assert.ok(!(programFor(wed, d).notes?.length));
   assert.equal(activityKcal(d, tue), 0);
 
-  // Tiklenince: Salı kısa/isteğe bağlı, Çarşamba toparlanma
+  // Gittim: kalori, su, Çarşamba toparlanma
   d = toggleActivity(d, tue, 'basketbol');
-  const tueP = programFor(tue, d);
-  assert.equal(tueP.optional, true);
-  const wedP = programFor(wed, d);
-  assert.ok(wedP.blocks!.some((b) => b.t.includes('toparlanma')));
-  assert.ok(!names(wed).includes('Goblet Squat Bekleme'));
-  assert.ok(activityKcal(d, tue) > 500 && activityKcal(d, tue) < 900, `kcal ${activityKcal(d, tue)}`);
+  assert.ok(programFor(wed, d).blocks!.some((b) => b.t.includes('toparlanma')));
+  assert.ok(activityKcal(d, tue) > 500 && activityKcal(d, tue) < 900);
   assert.equal(waterGoalOn(d, tue), d.goals.water + 550);
   assert.ok(dayVolume(d, tue).calves >= 2);
 
-  // Üst vücut programı: o hafta basketbol yapıldıysa Cumartesi bacak koruma squat'ı atlanır
+  // Üst vücut programı: Pazartesi triseps/kavrama -1 set, Salı çekiş günü kavrama hareketleri yok
   const up = { ...d, programFocus: 'upper' as const };
+  const upMon = programFor(mon, up);
+  assert.equal(upMon.blocks![2].ex[0].n, 'Overhead Triceps Extension');
+  assert.equal(upMon.blocks![2].ex[0].s, 2); // 3 → 2
+  for (const n of ['Kettlebell Curl', 'Hammer Curl', 'Suitcase Carry']) assert.ok(!names(tue, up).includes(n), n);
+  assert.ok(names(tue, up).includes('Tek Kol Row'));
   assert.ok(!names(sat, up).includes('Goblet Squat (hafif)'));
-  const upNoBall = toggleActivity(up, tue, 'basketbol');
-  assert.ok(names(sat, upNoBall).includes('Goblet Squat (hafif)'));
 
-  // Tik geri alınınca her şey eski haline döner
-  d = toggleActivity(d, tue, 'basketbol');
-  assert.equal(programFor(tue, d).optional, undefined);
+  // Gitmedim: Pazartesi, Salı, Çarşamba normal; kalori yok
+  let skip = toggleActivity(d, tue, 'basketbol'); // tik kaldır
+  skip = toggleActivitySkip(skip, tue, 'basketbol');
+  assert.equal(programFor(mon, skip).notes, undefined);
+  assert.equal(programFor(tue, skip).optional, undefined);
+  assert.ok(!(programFor(wed, skip).notes?.length));
+  assert.equal(activityKcal(skip, tue), 0);
+  // tekrar basınca plana döner
+  assert.equal(programFor(tue, toggleActivitySkip(skip, tue, 'basketbol')).optional, true);
 });

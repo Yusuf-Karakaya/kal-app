@@ -2,10 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Linking, Pressable, StyleSheet, Text, Vibration, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import {
-  ACTIVITY_TYPES, Data, FOCUS_LABEL, Focus, PROGRESSION_NOTES, activitiesOn, activityDone, activityKcal, addDays, burnedKcal,
-  dayProgress, exKey, fmt, keyToDate, programFor, programOf, resetWorkoutDay, todayKey, toggleActivity, toggleSet, videoUrl, weekProgress,
+  ACTIVITY_TYPES, Data, FOCUS_LABEL, Focus, PROGRESSION_NOTES, activitiesOn, activityDone, activityKcal, activitySkipped, addDays, burnedKcal,
+  dayProgress, exKey, fmt, keyToDate, programFor, programOf, resetWorkoutDay, todayKey, toggleActivity, toggleActivitySkip, toggleSet, videoUrl,
+  weekProgress,
 } from '../data';
-import { Card, Segmented, styles as ui, useTheme } from '../ui';
+import { Btn, Card, Segmented, styles as ui, useTheme } from '../ui';
 
 export interface RestTimer { end: number; total: number; label: string }
 interface Props { data: Data; commit: (d: Data, msg?: string) => void; startTimer: (t: RestTimer) => void }
@@ -113,19 +114,20 @@ export default function WorkoutScreen({ data, commit, startTimer }: Props) {
       {activitiesOn(data, key).map((a) => {
         const ty = ACTIVITY_TYPES[a.type];
         const done = activityDone(data, key, a.id);
+        const skipped = activitySkipped(data, key, a.id);
         const future = key > tk;
         const kcal = done ? activityKcal(data, key) : Math.round((ty.met * 3.5 * data.profile.weight) / 200 * a.minutes);
         return (
+          <View key={a.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Pressable
-            key={a.id}
-            disabled={future}
+            disabled={future || skipped}
             onPress={() => {
               const next = toggleActivity(data, key, a.id);
               commit(next, activityDone(next, key, a.id) ? `${a.name} işaretlendi; program buna göre düzenlendi` : 'İşaret kaldırıldı');
             }}
             accessibilityRole="checkbox"
             accessibilityState={{ checked: done, disabled: future }}
-            style={[s.actCard, { borderColor: done ? c.leaf : c.line, borderStyle: done ? 'solid' : 'dashed', backgroundColor: done ? c.leafSoft : c.card, opacity: future ? 0.75 : 1 }]}
+            style={[s.actCard, { flex: 1, borderColor: done ? c.leaf : c.line, borderStyle: done ? 'solid' : 'dashed', backgroundColor: done ? c.leafSoft : c.card, opacity: future || skipped ? 0.75 : 1 }]}
           >
             <View style={[s.actBox, { borderColor: done ? c.leaf : c.line, backgroundColor: done ? c.leaf : c.sunk }]}>
               <Text style={{ color: done ? c.card : 'transparent', fontWeight: '800' }}>✓</Text>
@@ -133,10 +135,20 @@ export default function WorkoutScreen({ data, commit, startTimer }: Props) {
             <View style={{ flex: 1 }}>
               <Text style={{ color: c.text, fontWeight: '700' }}>{ty.icon} {a.name}</Text>
               <Text style={{ color: c.muted, fontSize: 12 }}>
-                {a.minutes} dk · {done ? `gittin, ~${fmt(kcal)} kcal yaktın` : future ? 'planlı · o gün gelince işaretle' : `gittiysen işaretle (~${fmt(kcal)} kcal)`}
+                {a.minutes} dk · {done ? `gittin, ~${fmt(kcal)} kcal yaktın`
+                  : skipped ? (future ? 'gitmeyeceksin · program normal' : 'gitmedin · program normal')
+                  : future ? 'planlı · o gün gelince işaretle' : `gittiysen işaretle (~${fmt(kcal)} kcal)`}
               </Text>
             </View>
           </Pressable>
+          {!done && (
+            <Btn kind="ghost" label={skipped ? 'Plana al' : future ? 'Gitmeyeceğim' : 'Gitmedim'}
+              onPress={() => {
+                const next = toggleActivitySkip(data, key, a.id);
+                commit(next, activitySkipped(next, key, a.id) ? 'Bu hafta yok sayıldı; program normale döndü' : 'Plana geri alındı');
+              }} />
+          )}
+          </View>
         );
       })}
       {(p.notes ?? []).map((n) => (
@@ -154,7 +166,7 @@ export default function WorkoutScreen({ data, commit, startTimer }: Props) {
           </Text>
         </Card>
       ) : (
-        (p.blocks ?? []).map((b, bi) => b.ex.every((x) => x.skip) ? null : (
+        (p.blocks ?? []).map((b, bi) => ({ b, bi })).sort((x, y) => (y.b.pre ? 1 : 0) - (x.b.pre ? 1 : 0)).map(({ b, bi }) => b.ex.every((x) => x.skip) ? null : (
           <View key={b.t} style={{ gap: 10 }}>
             <Text style={[s.blockT, { color: c.muted }]}>{b.t.toLocaleUpperCase('tr-TR')}</Text>
             {b.ex.map((x, ei) => {

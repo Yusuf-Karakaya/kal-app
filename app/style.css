@@ -536,3 +536,7 @@ textarea:focus { outline: 2px solid var(--leaf); outline-offset: 0; border-color
 .act-row .del { justify-self: end; border: none; background: none; color: var(--muted); font-size: 1.1rem; cursor: pointer; }
 .act-min { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: .85rem; }
 .act-min input { width: 80px; }
+
+.act-wrap { display: flex; align-items: center; gap: 8px; margin: 10px 0; }
+.act-wrap .act-card { flex: 1; margin: 0; min-width: 0; }
+.act-skip { flex: none; }

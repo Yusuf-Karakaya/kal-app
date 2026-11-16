@@ -645,14 +645,18 @@ function renderWorkout() {
   for (const a of K.activitiesOn(data, wkKey)) {
     const ty = K.ACTIVITY_TYPES[a.type];
     const done = K.activityDone(data, wkKey, a.id);
+    const skipped = K.activitySkipped(data, wkKey, a.id);
     const future = wkKey > K.todayKey();
     const kcal = done ? K.activityKcal(data, wkKey) : Math.round(ty.met * 3.5 * data.profile.weight / 200 * a.minutes);
-    const sub = done ? `gittin, ~${fmt(kcal)} kcal yaktın` : future ? `planlı · o gün gelince işaretle` : `gittiysen işaretle (~${fmt(kcal)} kcal)`;
-    h += `<label class="act-card${done ? ' done' : ''}${future ? ' future' : ''}">
-      <input type="checkbox" class="act-check" data-act="${esc(a.id)}" ${done ? 'checked' : ''} ${future ? 'disabled' : ''} />
+    const sub = done ? `gittin, ~${fmt(kcal)} kcal yaktın`
+      : skipped ? (future ? 'gitmeyeceksin · program normal' : 'gitmedin · program normal')
+      : future ? 'planlı · o gün gelince işaretle' : `gittiysen işaretle (~${fmt(kcal)} kcal)`;
+    h += `<div class="act-wrap"><label class="act-card${done ? ' done' : ''}${future || skipped ? ' future' : ''}">
+      <input type="checkbox" class="act-check" data-act="${esc(a.id)}" ${done ? 'checked' : ''} ${future || skipped ? 'disabled' : ''} />
       <span class="act-box" aria-hidden="true">✓</span>
       <span class="act-text"><b>${ty.icon} ${esc(a.name)}</b><small>${a.minutes} dk · ${sub}</small></span>
-    </label>`;
+    </label>
+    ${done ? '' : `<button type="button" class="btn ghost small act-skip" data-actskip="${esc(a.id)}">${skipped ? 'Plana geri al' : future ? 'Gitmeyeceğim' : 'Gitmedim'}</button>`}</div>`;
   }
   if (p.notes && p.notes.length) {
     h += p.notes.map((n) => `<div class="insight info wk-note">${esc(n)}</div>`).join('');
@@ -666,7 +670,10 @@ function renderWorkout() {
   }
   const sets = (data.workouts && data.workouts[wkKey]) || {};
   const skipped = p.blocks.flatMap((b) => b.ex.filter((x) => x.skip).map((x) => x.n));
-  p.blocks.forEach((b, bi) => {
+  // Isınma gibi "önce" blokları başta göster (set anahtarları dizideki sırayla kalır)
+  const order = p.blocks.map((b, i) => i).sort((a, b) => (p.blocks[b].pre ? 1 : 0) - (p.blocks[a].pre ? 1 : 0));
+  order.forEach((bi) => {
+    const b = p.blocks[bi];
     if (b.ex.every((x) => x.skip)) return;
     h += `<div class="block-t">${esc(b.t)}</div><div class="ex-list">`;
     b.ex.forEach((x, ei) => {
@@ -756,6 +763,13 @@ function bindWorkout() {
     const a = (data.activities || []).find((x) => x.id === cb.dataset.act);
     const next = K.toggleActivity(data, wkKey, cb.dataset.act);
     commit(next, K.activityDone(next, wkKey, cb.dataset.act) ? `${a ? a.name : 'Aktivite'} işaretlendi; program buna göre düzenlendi` : 'İşaret kaldırıldı');
+  });
+  $('#wkView').addEventListener('click', (e) => {
+    const sb = e.target.closest('[data-actskip]');
+    if (!sb) return;
+    const id = sb.dataset.actskip;
+    const next = K.toggleActivitySkip(data, wkKey, id);
+    commit(next, K.activitySkipped(next, wkKey, id) ? 'Tamam, bu hafta yok sayıldı; program normale döndü' : 'Plana geri alındı');
   });
   $('#wkView').onclick = async (e) => {
     const setBtn = e.target.closest('[data-ek]');
