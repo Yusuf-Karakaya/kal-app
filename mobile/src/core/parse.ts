@@ -132,7 +132,8 @@ function tokenMatches(token: string, alias: string, fuzzy = false, multi = false
   if (token === alias) return true;
   // "-sız/-süz" yokluk bildirir: "misosuz ramen" miso içermez
   if (/(siz|suz)$/.test(token) && token.length - alias.length <= 4 && token.startsWith(alias.slice(0, -1))) return false;
-  if (fuzzy && fuzzyMatches(token, alias, multi)) return true;
+  // Kendisi bilinen bir yemek kelimesi olan sözcük ("salatalık") hatalı yazım sayılmaz
+  if (fuzzy && !KNOWN_WORDS.has(token) && fuzzyMatches(token, alias, multi)) return true;
   const candidates = [alias];
   const last = alias[alias.length - 1];
   if (alias.length >= 4 && MUTATE[last]) candidates.push(alias.slice(0, -1) + MUTATE[last]);
@@ -162,20 +163,42 @@ export function detectMeal(text: string): MealKey | undefined {
   return undefined;
 }
 
-interface IndexedAlias { food: Food; tokens: string[]; len: number }
+interface IndexedAlias { food: Food; tokens: string[]; len: number; order: number }
 const ALIAS_INDEX: IndexedAlias[] = FOODS.flatMap((food) =>
   food.aliases.map((a) => {
     // Kullanıcı metniyle aynı biçimde sadeleştir ("mcdonald's" → "mcdonald s")
     const tokens = fold(a).replace(/[^a-z0-9.,/\s]/g, ' ').trim().split(/\s+/);
-    return { food, tokens, len: tokens.join('').length };
+    return { food, tokens, len: tokens.join('').length, order: 0 };
   }),
 );
+ALIAS_INDEX.forEach((e, i) => { e.order = i; });
+const KNOWN_WORDS = new Set(ALIAS_INDEX.flatMap((e) => e.tokens));
+
+// Hızlı arama için dizin: bir kelime ancak adın ilk iki harfiyle başlıyorsa eşleşebilir.
+// Yazım hatası araması yalnızca ilk harfe göre daraltılır (ilk harfte hata yapılması seyrektir).
+const BY_PREFIX2 = new Map<string, IndexedAlias[]>();
+const BY_PREFIX1 = new Map<string, IndexedAlias[]>();
+for (const e of ALIAS_INDEX) {
+  const t = e.tokens[0];
+  const k2 = t.slice(0, 2), k1 = t.slice(0, 1);
+  if (!BY_PREFIX2.has(k2)) BY_PREFIX2.set(k2, []);
+  BY_PREFIX2.get(k2)!.push(e);
+  if (!BY_PREFIX1.has(k1)) BY_PREFIX1.set(k1, []);
+  BY_PREFIX1.get(k1)!.push(e);
+}
 
 interface FoodMatch { food: Food; used: Set<number>; score: number }
 
 function matchFood(tokens: string[], extra: IndexedAlias[], fuzzy = false): FoodMatch | undefined {
-  let best: { food: Food; used: Set<number>; score: number } | undefined;
-  for (const entry of [...extra, ...ALIAS_INDEX]) {
+  let best: { food: Food; used: Set<number>; score: number; order: number } | undefined;
+  // Adayları topla (her ad bir kez, en erken başlangıçla denenir)
+  const cands = new Set<IndexedAlias>(extra);
+  for (const t of tokens) {
+    for (const e of (fuzzy ? BY_PREFIX1.get(t.slice(0, 1)) : BY_PREFIX2.get(t.slice(0, 2))) ?? []) cands.add(e);
+    // Tek harfli adlar ("ı" gibi) ve kısa adlar için ilk harf dizini
+    if (!fuzzy && t.length < 2) for (const e of BY_PREFIX1.get(t) ?? []) cands.add(e);
+  }
+  for (const entry of cands) {
     // Ad parçaları sırayla ve aralarında en fazla bir kelime boşlukla bulunmalı
     for (let start = 0; start < tokens.length; start++) {
       const multi = entry.tokens.length > 1;
@@ -193,15 +216,17 @@ function matchFood(tokens: string[], extra: IndexedAlias[], fuzzy = false): Food
         pos = found;
       }
       if (!ok) continue;
-      // Daha uzun ad kazanır; eşitlikte kullanıcının eklediği yemek öne geçer.
+      // Daha uzun ad kazanır; eşitlikte kullanıcının eklediği yemek, sonra listede önce gelen öne geçer.
       // "-li/-lı" eki almış kelime niteleyicidir ("peynirli tost" → tost), puanı düşürülür.
       const modifier = [...used].some((i, k) => /^(.*)(li|lu)$/.test(tokens[i]) && tokens[i] !== entry.tokens[k] && !/(li|lu)$/.test(entry.tokens[k]));
-      const score = (modifier ? entry.len * 0.3 : entry.len) + (extra.includes(entry) ? 0.5 : 0);
-      if (!best || score > best.score) best = { food: entry.food, used, score };
+      const isExtra = extra.includes(entry);
+      const score = (modifier ? entry.len * 0.3 : entry.len) + (isExtra ? 0.5 : 0);
+      const order = isExtra ? -1 : entry.order;
+      if (!best || score > best.score || (score === best.score && order < best.order)) best = { food: entry.food, used, score, order };
       break;
     }
   }
-  return best;
+  return best && { food: best.food, used: best.used, score: best.score };
 }
 
 function parseNumberToken(tok: string): number | undefined {
@@ -378,7 +403,10 @@ function parseSegment(segment: string, extra: IndexedAlias[]): { item: ParsedIte
   }
   // 3) Yazım hatası toleransıyla da ara ("tavkk sote", "mercimel çorbası"); belirgin biçimde daha uzun
   // bir ad yakalarsa onu tercih et ("mercimel çorbası" → "çorba" yerine "mercimek çorbası")
-  const fz = matchFood(strippedIdx.map((j) => cand[j]), extra, true);
+  // Tam eşleşme zaten bütün kelimeleri kapsıyorsa yazım hatası araması bir şey katamaz (hız için atlanır)
+  const covered = m ? strippedIdx.filter((j) => m!.used.has(j)).length : 0;
+  const open = strippedIdx.filter((j) => !m?.used.has(j) && !(cand[j].length > 4 && /(li|lu|siz|suz)$/.test(cand[j])));
+  const fz = !m || (open.length > 0 && covered < strippedIdx.length) ? matchFood(strippedIdx.map((j) => cand[j]), extra, true) : undefined;
   if (fz && (!m || (fz.used.size > m.used.size && fz.score * 0.85 > m.score))) m = { ...fz, used: new Set([...fz.used].map((k) => strippedIdx[k])) };
   const unit = unitHit?.unit;
   let estimate = false;
@@ -486,7 +514,7 @@ const PHRASES: [RegExp, string][] = [
 export function parseMealText(text: string, customFoods: Record<string, number> = {}): ParseResult {
   const extra: IndexedAlias[] = customFoodsToFoods(customFoods).map((food) => {
     const tokens = fold(food.name).split(/\s+/);
-    return { food, tokens, len: tokens.join('').length };
+    return { food, tokens, len: tokens.join('').length, order: -1 };
   });
   const meal = detectMeal(text);
 

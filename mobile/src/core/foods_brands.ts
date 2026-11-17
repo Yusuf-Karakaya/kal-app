@@ -87,7 +87,7 @@ export const BRAND_ROWS: ExtRow[] = [
   ['cheerios', 'Cheerios / Nesfit', 'cheerios|nesfit|nestle nesfit|fitness gevrek|special k|kellogg special k', 375, 8.5, 75, 4, 'kase', 30, '', 'kahvalti'],
   ['nesquik-sut', 'Nesquik kakaolu süt', 'nesquik süt|nesquik kakaolu süt|kido|pınar kido|kido süt', 60, 2.8, 9.5, 1.2, 'kutu', 180, '', 'icecek', D],
   ['protein-sut', 'Proteinli süt', 'pınar protein|pınar protein süt|protein süt|proteinli süt|içim fit|içim fit süt|sek protein süt|protein kakaolu süt', 48, 5.5, 6, 0.3, 'şişe', 500, 'bardak:200,kutu:250', 'icecek', { hydration: 0.9 }],
-  ['soguk-kahve-kutu', 'Kutu soğuk kahve', 'pınar cafe art|cafe art|soğuk kahve kutu|kutu kahve|nescafe xpress|nescafe express|starbucks double shot|hazır soğuk kahve', 60, 2.8, 8.5, 1.4, 'kutu', 250, '', 'icecek', D],
+  ['soguk-kahve-kutu', 'Kutu soğuk kahve', 'pınar cafe art|cafe art|soğuk kahve kutu|kutu kahve|nescafe xpress|nescafe express|hazır soğuk kahve', 60, 2.8, 8.5, 1.4, 'kutu', 250, '', 'icecek', D],
   ['activia', 'Activia / meyveli probiyotik yoğurt', 'activia|danone activia|probiyotik meyveli yoğurt', 66, 3.4, 9.8, 1.4, 'kutu', 100, '', 'kahvalti'],
 
   /* ---------- Süt, peynir, şarküteri ---------- */

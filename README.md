@@ -26,14 +26,16 @@ kalori, protein, karbonhidrat ve yağı hesaplar.
 > *"kahvaltıda 2 haşlanmış yumurta, yarım simit, 1 dilim kaşar ve 2 bardak çay içtim"*
 > → 4 kalem, 394 kcal, 23 g protein; öğün otomatik "Kahvaltı", çay su hedefine 180 ml olarak sayılır.
 
-- **900 yemek ve içecek, 3400+ ad**: kahvaltılıklar, çorbalar, ev ve yöresel yemekler (kuzu tandır, beyti,
-  etli ekmek, keşkek, sini köftesi…), kebaplar, deniz ürünleri, sokak lezzetleri, dünya mutfağı (köri, ramen, poke,
-  burrito, pad thai, suşi…), zincir ve paket ürünler (marka adlarıyla), tatlılar, meyveler, kuruyemişler, içecekler.
+- **3200+ yemek ve içecek, 9000+ ad**: kahvaltılıklar, çorbalar, ev ve yöresel yemekler (kuzu tandır, beyti,
+  etli ekmek, keşkek, sini köftesi, çerkez tavuğu…), her sebzenin zeytinyağlısı/etlisi/kızartması/közü/çorbası/
+  dolması, 50 balığın ızgara/tava/buğulama/fırın hâli, et ve tavuk parçalarının pişirme çeşitleri, "patatesli tavuk",
+  "ayvalı kuzu" gibi ev yemekleri, iç×hamur çeşitleri (ıspanaklı su böreği, kıymalı gözleme, kaşarlı mantarlı tost…),
+  pilav ve makarna çeşitleri, kebaplar, köfteler, tatlılar, meyveli içecek ve tatlılar, çaylar, sütlü kahveler.
   Değerler 100 g başına; TürKomp ve USDA FoodData Central temel alınarak tipik tariflerden hesaplanmış tahminlerdir.
 - **Türk markaları**: Ülker, Eti, Torku, Şölen, Tadım, Nestlé, Pınar, Sütaş, Namet, Uno, Dardanel… paket ürünleri
   ambalajdaki besin tablosuna göre (*1 eti tutku, 2 dilim uno tost ekmeği, 1 kutu dardanel ton*).
-- **Zincir restoranlar**: Burger King, McDonald's, Tavuk Dünyası, Popeyes, KFC, Subway, Domino's, Sbarro, Arby's,
-  Usta Dönerci, Komagene, Starbucks ürünleri (*mcdonalds big mac, tavuk dünyası kremantar, komagene dürüm*).
+- **Zincir restoranlar**: Tavuk Dünyası, Usta Dönerci, Komagene, Sbarro ve Mado ürünleri
+  (*tavuk dünyası kremantar, komagene dürüm*).
 - **Sos ve niteleyiciler**: *körili, kremalı, kaşarlı, sucuklu, ballı, tereyağlı, kızarmış/pane* gibi ekler
   yemeğin üstüne eklenir ("körili tavuk sote" → tavuk sote + köri sosu). *-sız/-süz* yokluk bildirir (*misosuz*).
 - **Yazım hatası toleransı**: *tavkk sote, mercimel çorbası, lahmacum, iskendr* doğru yemeğe eşleşir.
@@ -174,7 +176,8 @@ mobile/
     foods.ts                 yemek/içecek veritabanı (temel)
     foods_ext.ts             genişletilmiş veritabanı: yöresel, dünya mutfağı, markalar, ek adlar
     foods_brands.ts          Türk markalarının paket ürünleri (Open Food Facts verisiyle)
-    foods_chains.ts          zincir restoran ve kafe ürünleri (zincirlerin besin değeri tabloları)
+    foods_chains.ts          zincir restoran ürünleri (zincirlerin besin değeri tabloları)
+    foods_gen.ts             tarif şablonlarından üretilmiş ~2500 yemek (tools/gen_foods.py ile yeniden üretilir)
     parse.ts                 Türkçe doğal dil ayrıştırıcı
     model.ts                 veri modeli, hedef ve makro hesapları, kayıt işlemleri
     insights.ts              kilo trendi, harcama tahmini, seriler, öneriler
@@ -222,9 +225,11 @@ bir HTML dosyasına dönüştürür (claude.ai Artifact sayfası olarak yayınla
   ham malzeme değerleri üzerinden tipik tariflerle hesaplanıp yuvarlanmıştır; markalı ürünlerde ambalaj ortalamaları.
 - Markalı paket ürünler: [Open Food Facts](https://world.openfoodfacts.org) (ODbL) ambalaj kayıtları; tutarsız kayıtlar
   ambalaj ortalamalarıyla düzeltildi.
-- Zincir restoranlar: Burger King Türkiye, McDonald's Türkiye ve Tavuk Dünyası resmî besin tabloları; Popeyes, Subway, Sbarro,
-  Arby's ve Usta Dönerci için neyediginibil.com; KFC, Domino's ve Starbucks için zincirlerin yurt dışı tabloları. Zincirin
-  porsiyon ağırlığı vermediği ürünlerde ağırlık tahminidir (porsiyon kalorisi tablodaki değerdir).
+- Zincir restoranlar: Tavuk Dünyası resmî besin tablosu; Sbarro ve Usta Dönerci için neyediginibil.com. Zincirin porsiyon
+  ağırlığı vermediği ürünlerde ağırlık tahminidir (porsiyon kalorisi tablodaki değerdir).
+- Şablondan üretilen yemekler (`tools/gen_foods.py` → `foods_gen.ts`): ham malzeme değerlerinden pişirme kurallarıyla
+  hesaplanır (ızgarada su kaybı, kızartmada un ve yağ, zeytinyağlıda yağ ve soğan, hamur işinde hamur/iç oranı);
+  tarifler değiştikçe değerler ±%20 sapabilir.
 - Günlük harcama: Mifflin-St Jeor. Yakılan kalori: Compendium of Physical Activities MET değerleri.
 
 ## Yedeği taşımak

@@ -72,7 +72,8 @@ test('uzun ad kısa addan önce gelir', () => {
 });
 
 test('-li eki niteleyicidir', () => {
-  assert.equal(first('peynirli tost').food?.id, 'tost');
+  assert.equal(first('zeytinli tost').food?.id, 'tost');
+  assert.equal(first('peynirli tost').food?.id, 'g-peynirli-tost');
   assert.equal(first('yumurtalı menemen').food?.id, 'menemen');
 });
 
@@ -167,7 +168,7 @@ test('kendi eklenen yemekler tanınır', () => {
 });
 
 test('miktar sonda da yazılabilir, niteleyici ayrı yemek olmaz', () => {
-  const r = parseMealText('mantarlı pizza 2 dilim');
+  const r = parseMealText('ananaslı pizza 2 dilim');
   assert.deepEqual(r.items.map((i) => [i.food?.id, i.qty]), [['pizza', 2]]);
   assert.deepEqual(r.unknown, []);
 });
@@ -319,12 +320,14 @@ test('kimlikler benzersiz ve değerler mantıklı', () => {
 
 test('her ad kendi yemeğine eşleşir', () => {
   const bad: string[] = [];
+  const ownersOf = new Map<string, string[]>();
+  for (const x of FOODS) for (const y of x.aliases) ownersOf.set(fold(y), [...(ownersOf.get(fold(y)) ?? []), x.id]);
   for (const f of FOODS) {
     for (const a of f.aliases) {
       const r = parseMealText(a);
       const id = r.items[0]?.food?.id;
       // Aynı adı paylaşan başka yemek varsa kabul et
-      const owners = FOODS.filter((x) => x.aliases.some((y) => fold(y) === fold(a))).map((x) => x.id);
+      const owners = ownersOf.get(fold(a)) ?? [];
       if (!owners.includes(id ?? '')) bad.push(`${a} → ${id ?? 'yok'} (beklenen ${f.id})`);
     }
   }

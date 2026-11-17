@@ -4,7 +4,7 @@
 
 type Group =
   | 'kahvalti' | 'ekmek' | 'corba' | 'ana' | 'et' | 'fastfood' | 'salata'
-  | 'meyve' | 'kuruyemis' | 'tatli' | 'icecek' | 'diger';
+  | 'meyve' | 'sebze' | 'kuruyemis' | 'tatli' | 'icecek' | 'diger';
 export type ExtRow = [string, string, string, number, number, number, number, string, number, string, Group, { whole?: number; hydration?: number }?];
 
 const H = { hydration: 0.9 };
@@ -201,8 +201,8 @@ export const EXT_ROWS: ExtRow[] = [
   ['fajita', 'Fajita', 'fajita|tavuk fajita|et fajita', 160, 11, 13, 7, 'porsiyon', 300, '', 'fastfood'],
   ['chili', 'Chili con carne', 'chili|chili con carne|şili|meksika fasulyesi', 120, 9, 10, 5, 'porsiyon', 300, '', 'ana'],
   ['hotdog', 'Sosisli sandviç', 'sosisli sandviç|hot dog|hotdog|sosisli ekmek', 270, 10, 25, 15, 'adet', 150, '', 'fastfood'],
-  ['tavuk-burger', 'Tavuk burger', 'tavuk burger|chicken burger|mcchicken|zinger|tavukburger|crispy burger|çıtır tavuk burger|king chicken', 250, 12, 26, 11, 'adet', 200, '', 'fastfood'],
-  ['buyuk-burger', 'Büyük hamburger', 'big mac|whopper|big king|double burger|duble burger|steakhouse burger|gurme burger|double cheeseburger', 250, 13, 19, 14, 'adet', 250, '', 'fastfood'],
+  ['tavuk-burger', 'Tavuk burger', 'tavuk burger|chicken burger|tavukburger|crispy burger|çıtır tavuk burger|king chicken', 250, 12, 26, 11, 'adet', 200, '', 'fastfood'],
+  ['buyuk-burger', 'Büyük hamburger', 'double burger|duble burger|steakhouse burger|gurme burger|double cheeseburger', 250, 13, 19, 14, 'adet', 250, '', 'fastfood'],
   ['sogan-halkasi', 'Soğan halkası', 'soğan halkası|onion rings|soğan halkaları', 410, 4.5, 40, 26, 'porsiyon', 100, 'adet:12', 'fastfood'],
   ['elma-dilim', 'Elma dilim patates', 'elma dilim patates|elma dilim|baharatlı patates|wedges|steak patates|fırın patates kızartması', 200, 3, 28, 8.5, 'porsiyon', 150, '', 'fastfood'],
   ['adana-durum', 'Adana dürüm', 'adana dürüm|kebap dürüm|urfa dürüm|kebab dürüm|lavaş kebap|acılı dürüm', 260, 13, 24, 12, 'adet', 280, '', 'fastfood'],
@@ -228,7 +228,7 @@ export const EXT_ROWS: ExtRow[] = [
   ['tavuk-tenders', 'Tavuk tenders / strips', 'tenders|strips|tavuk strips|tavuk parmak|crispy|çıtır tavuk parça|popcorn tavuk', 270, 17, 17, 15, 'porsiyon', 150, 'adet:30', 'fastfood'],
   ['tantuni-ekmek', 'Tantuni (yarım ekmek)', 'ekmek arası tantuni|tantuni ekmek', 240, 13, 24, 10, 'adet', 250, '', 'fastfood'],
   ['kumpir-dolu', 'Dolu kumpir', 'karışık kumpir|dolu kumpir|kumpir karışık', 170, 4.5, 20, 8, 'adet', 500, '', 'fastfood'],
-  ['pizza-ince', 'İnce hamur pizza', 'ince hamur pizza|ince pizza|napoli pizza|margherita|margarita|pepperoni|pepperoni pizza|sucuklu pizza|ton balıklı pizza|dominos|pizza hut|little caesars', 250, 11, 28, 10.5, 'dilim', 90, 'adet:450,porsiyon:360,küçük:360,orta:540,büyük:720', 'fastfood'],
+  ['pizza-ince', 'İnce hamur pizza', 'ince hamur pizza|ince pizza|napoli pizza|margherita|margarita|pepperoni|pepperoni pizza|sucuklu pizza|ton balıklı pizza|little caesars', 250, 11, 28, 10.5, 'dilim', 90, 'adet:450,porsiyon:360,küçük:360,orta:540,büyük:720', 'fastfood'],
   ['calzone', 'Calzone', 'calzone|kapalı pizza', 260, 11, 30, 11, 'adet', 300, '', 'fastfood'],
   ['crepe-tuzlu', 'Tuzlu krep', 'tuzlu krep|tavuklu krep|kaşarlı krep|galette', 200, 9, 20, 9, 'adet', 200, '', 'fastfood'],
   ['kokorec-ceyrek', 'Kokoreç dürüm', 'kokoreç dürüm|dürüm kokoreç', 270, 13, 22, 15, 'adet', 250, '', 'fastfood'],
@@ -332,7 +332,7 @@ export const EXT_ROWS: ExtRow[] = [
   ['lokma-tatli', 'Lokma', 'lokma tatlısı|izmir lokması|çikolatalı lokma|bal lokma', 350, 4, 50, 15, 'adet', 15, 'porsiyon:150', 'tatli'],
   ['churros', 'Churros', 'churros|çuros|tulumba churros', 390, 5, 45, 21, 'adet', 30, 'porsiyon:120', 'tatli'],
   ['cikolatali-sut', 'Puding (hazır kap)', 'hazır puding|kap puding|danette|sütlü tatlı kap', 120, 3, 19, 3.5, 'kutu', 100, '', 'tatli'],
-  ['kurabiye-cikolatali', 'Çikolatalı kurabiye', 'çikolatalı kurabiye|chocolate chip|damla çikolatalı kurabiye|subway kurabiye|dev kurabiye', 480, 5, 63, 23, 'adet', 45, '', 'tatli'],
+  ['kurabiye-cikolatali', 'Çikolatalı kurabiye', 'çikolatalı kurabiye|chocolate chip|damla çikolatalı kurabiye|dev kurabiye', 480, 5, 63, 23, 'adet', 45, '', 'tatli'],
   ['paket-kek', 'Paket kek / marshmallow', 'paket kek|kek paketi|cocostar|caramio|eti kek|ülker kekstra', 430, 5, 62, 18, 'adet', 35, 'paket:70', 'tatli'],
   ['cikolata-bar', 'Çikolata bar', 'snickers|twix|mars|bounty|kinder bueno|kinder|milka|toblerone|tadelle|hobby|lion|kit kat|ferrero|ferrero rocher', 520, 7, 58, 28, 'adet', 45, 'kare:6,tablet:80,paket:45', 'tatli'],
   ['biskuvi-cikolatali', 'Kremalı bisküvi', 'negro|oreo|kremalı bisküvi|çikolatalı bisküvi|rondo|ülker bisküvi|eti bisküvi', 480, 6, 66, 21, 'adet', 12, 'paket:60', 'tatli'],
@@ -385,7 +385,7 @@ export const ALIAS_ADD: Record<string, string> = {
   sushi: 'maki|california roll|nigiri|roll|suşi roll',
   'doner-et': 'gyros|döner et|yaprak döner|zurna döner',
   'filtre-kahve': 'macchiato|ristretto|lungo|doppio|kahve sade|filtre',
-  latte: 'cortado|cafe au lait|sütlü filtre kahve|vanilyalı latte|karamelli latte|starbucks latte|spanish latte',
+  latte: 'cortado|cafe au lait|sütlü filtre kahve|vanilyalı latte|karamelli latte|spanish latte',
   bira: 'efes|tuborg|carlsberg|heineken|corona|bomonti|birra',
   raki: 'tekila|konyak|brendi|jager|yeni rakı|tekirdağ rakısı',
   sarap: 'roze|rose şarap|kadeh şarap|sangria',

@@ -25,11 +25,12 @@ export interface Food {
 
 export type FoodGroup =
   | 'kahvalti' | 'ekmek' | 'corba' | 'ana' | 'et' | 'fastfood' | 'salata'
-  | 'meyve' | 'kuruyemis' | 'tatli' | 'icecek' | 'diger';
+  | 'meyve' | 'sebze' | 'kuruyemis' | 'tatli' | 'icecek' | 'diger';
 
 import { ALIAS_ADD, EXT_ROWS } from './foods_ext';
 import { BRAND_ALIAS_ADD, BRAND_ROWS } from './foods_brands';
 import { CHAIN_ROWS } from './foods_chains';
+import { GEN_ROWS } from './foods_gen';
 
 const EXTRA_ALIASES: Record<string, string> = { ...ALIAS_ADD };
 for (const [k, v] of Object.entries(BRAND_ALIAS_ADD)) EXTRA_ALIASES[k] = EXTRA_ALIASES[k] ? EXTRA_ALIASES[k] + '|' + v : v;
@@ -233,7 +234,7 @@ const ROWS: Row[] = [
   // Kafe ve dışarıda
   ['sezar-salata', 'Sezar salata', 'sezar|sezar salata|tavuklu salata', 150, 10, 7, 9, 'porsiyon', 300, '', 'salata'],
   ['ton-salata', 'Ton balıklı salata', 'ton balıklı salata|ton salata', 120, 10, 5, 7, 'porsiyon', 300, '', 'salata'],
-  ['nugget', 'Tavuk nugget / çıtır tavuk', 'nugget|tavuk nugget|çıtır tavuk|tavuk kızartma|kfc', 280, 16, 16, 17, 'adet', 18, 'porsiyon:150', 'fastfood'],
+  ['nugget', 'Tavuk nugget / çıtır tavuk', 'nugget|tavuk nugget|çıtır tavuk|tavuk kızartma', 280, 16, 16, 17, 'adet', 18, 'porsiyon:150', 'fastfood'],
   ['wrap', 'Tavuklu wrap', 'wrap|tavuk wrap|tavuklu wrap', 210, 12, 22, 8, 'adet', 250, '', 'fastfood'],
   ['sandvic', 'Sandviç', 'sandviç|sandvic|baget sandviç|kumru', 250, 11, 30, 9, 'adet', 200, '', 'fastfood'],
   ['sucuk-ekmek', 'Sucuk ekmek', 'sucuk ekmek', 300, 12, 30, 15, 'adet', 250, '', 'fastfood'],
@@ -331,7 +332,7 @@ function parseUnits(s: string): Record<string, number> {
   return out;
 }
 
-export const FOODS: Food[] = [...ROWS, ...(EXT_ROWS as Row[]), ...(BRAND_ROWS as Row[]), ...(CHAIN_ROWS as Row[])].map(([id, name, aliases, kcal, p, c, f, unit, grams, units, group, extra]) => ({
+export const FOODS: Food[] = [...ROWS, ...(EXT_ROWS as Row[]), ...(BRAND_ROWS as Row[]), ...(CHAIN_ROWS as Row[]), ...(GEN_ROWS as Row[])].map(([id, name, aliases, kcal, p, c, f, unit, grams, units, group, extra]) => ({
   id, name,
   aliases: [...aliases.split('|'), ...(EXTRA_ALIASES[id] ? EXTRA_ALIASES[id].split('|') : [])].map((a) => a.trim()),
   kcal, p, c, f, unit, grams,
@@ -344,7 +345,7 @@ export const FOOD_BY_ID: Record<string, Food> = Object.fromEntries(FOODS.map((f)
 
 export const GROUP_LABELS: Record<FoodGroup, string> = {
   kahvalti: 'Kahvaltılık', ekmek: 'Ekmek ve hamur işi', corba: 'Çorba', ana: 'Ev yemeği', et: 'Et, tavuk, balık',
-  fastfood: 'Dışarıda', salata: 'Salata ve meze', meyve: 'Meyve', kuruyemis: 'Kuruyemiş', tatli: 'Tatlı ve atıştırmalık',
+  fastfood: 'Dışarıda', salata: 'Salata ve meze', meyve: 'Meyve', sebze: 'Sebze', kuruyemis: 'Kuruyemiş', tatli: 'Tatlı ve atıştırmalık',
   icecek: 'İçecek', diger: 'Diğer',
 };
 
